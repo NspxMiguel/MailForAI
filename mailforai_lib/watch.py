@@ -212,16 +212,22 @@ def scan_once(account: Dict[str, Any], limit: int = 40,
 def run(account: Dict[str, Any], interval: Optional[int] = None,
         once: bool = False, dry_run: bool = False, log=print) -> None:
     espera = int(interval or settings(account)["interval"])
+    silencios = 0
     while True:
         try:
             feitos = scan_once(account, dry_run=dry_run)
             if feitos:
+                silencios = 0
                 for item in feitos:
-                    log(f"[{item['action']}] {item['subject']} — {item['from'][:40]}")
+                    log(f"{_now()} [{item['action']}] {item['subject']} — {item['from'][:40]}")
             else:
-                log("nada novo")
+                # varredura vazia é o caso comum; repetir a mesma linha a cada
+                # ciclo enche o registro e esconde o que importa
+                silencios += 1
+                if silencios == 1 or silencios % 20 == 0:
+                    log(f"{_now()} nada novo (varredura {silencios})")
         except Exception as exc:
-            log(f"erro na varredura: {exc}")
+            log(f"{_now()} erro na varredura: {exc}")
         if once:
             return
         time.sleep(espera)

@@ -70,7 +70,9 @@ def instalar(intervalo: int = 300, conta: str = None) -> Dict[str, Any]:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     PLIST.parent.mkdir(parents=True, exist_ok=True)
 
-    argumentos = ["/usr/bin/python3", binario, "watch", "--interval", str(intervalo)]
+    # -u desliga o buffer do Python: sem isso o registro do serviço fica vazio
+    # por minutos e parece que nada está acontecendo
+    argumentos = ["/usr/bin/python3", "-u", binario, "watch", "--interval", str(intervalo)]
     if conta:
         argumentos += ["--account", conta]
 
