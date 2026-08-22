@@ -36,8 +36,41 @@ def read_waiting() -> dict:
         return {"emails": 0, "questions": 0}
 
 
+def _notificador() -> Optional[str]:
+    """O notificador que vem dentro do app — é o que traz o ícone do MailForAI."""
+    from pathlib import Path
+    candidatos = [
+        Path("/Applications/MailForAI.app/Contents/Resources/MailForAINotifier.app"
+             "/Contents/MacOS/MailForAINotifier"),
+        Path(__file__).resolve().parent.parent / "mac" / "MailForAI.app" / "Contents"
+        / "Resources" / "MailForAINotifier.app" / "Contents" / "MacOS" / "MailForAINotifier",
+    ]
+    for candidato in candidatos:
+        if candidato.exists():
+            return str(candidato)
+    return None
+
+
+def _icone() -> Optional[str]:
+    """O PNG do app, para a notificação não sair com cara de outro programa."""
+    from pathlib import Path
+    candidatos = [
+        Path("/Applications/MailForAI.app/Contents/Resources/icon-1024.png"),
+        Path(__file__).resolve().parent.parent / "mac" / "Resources" / "icon-1024.png",
+    ]
+    for candidato in candidatos:
+        if candidato.exists():
+            return str(candidato)
+    return None
+
+
 def system(title: str, message: str, subtitle: Optional[str] = None) -> bool:
-    """Notificação nativa. Falhar aqui não pode derrubar um envio."""
+    """Notificação nativa. Falhar aqui não pode derrubar um envio.
+
+    Três caminhos, do melhor para o que sempre funciona. O primeiro é o único
+    que mostra o ícone do MailForAI: o `osascript` do fim aparece com o ícone
+    do Editor de Scripts, como se o aviso viesse de outro programa.
+    """
     try:
         if platform.system() == "Darwin":
             if shutil.which("terminal-notifier"):
@@ -45,8 +78,19 @@ def system(title: str, message: str, subtitle: Optional[str] = None) -> bool:
                         "-sound", "Ping", "-group", "mailforai"]
                 if subtitle:
                     args += ["-subtitle", subtitle]
-                subprocess.run(args, capture_output=True, timeout=5)
-                return True
+                icone = _icone()
+                if icone:
+                    args += ["-appIcon", icone]
+                if subprocess.run(args, capture_output=True, timeout=10).returncode == 0:
+                    return True
+
+            proprio = _notificador()
+            if proprio:
+                resultado = subprocess.run([proprio, title, message, subtitle or ""],
+                                           capture_output=True, timeout=12)
+                if resultado.returncode == 0:
+                    return True
+
             # osascript não aceita aspas soltas no texto: escapar antes de montar
             def esc(texto: str) -> str:
                 return texto.replace("\\", "\\\\").replace('"', '\\"')

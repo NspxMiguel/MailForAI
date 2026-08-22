@@ -767,6 +767,19 @@ def cmd_hook(args) -> int:
     return 0
 
 
+def cmd_notify_cmd(args) -> int:
+    """Dispara uma notificação de teste — e o pedido de permissão, se faltar."""
+    ok = notify.system(args.title or "MailForAI",
+                       args.message or T("Notificação de teste", "Test notification"),
+                       args.subtitle)
+    if args.json:
+        _out({"sent": ok}, True)
+        return 0 if ok else 1
+    print(T("notificação enviada", "notification sent") if ok
+          else T("não consegui notificar", "could not notify"))
+    return 0 if ok else 1
+
+
 def cmd_selftest(args) -> int:
     """Prova o ciclo inteiro numa caixa de mentira, sem tocar na de verdade."""
     from . import selftest
@@ -1051,6 +1064,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("hook", cmd_hook, "lembrar no Claude Code, em qualquer projeto, o que está parado")
     p.add_argument("--remove", action="store_true", help="desinstalar o lembrete")
     p.add_argument("--status", action="store_true", help="dizer apenas se está instalado")
+
+    p = add("notify", cmd_notify_cmd, "testar a notificação (e pedir permissão)")
+    p.add_argument("--title")
+    p.add_argument("--message")
+    p.add_argument("--subtitle")
 
     add("selftest", cmd_selftest, "provar que o agente funciona, numa caixa de mentira")
 

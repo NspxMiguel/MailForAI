@@ -137,6 +137,8 @@ final class Store: ObservableObject {
         }
     }
 
+    func testarNotificacao() { act(["notify"]) }
+
     func instalarHook(_ ligar: Bool) {
         act(ligar ? ["hook"] : ["hook", "--remove"])
         conferirIntegracoes()

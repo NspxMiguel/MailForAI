@@ -8,6 +8,11 @@ let package = Package(
         .executableTarget(
             name: "MailForAI",
             path: "Sources/MailForAI"
+        ),
+        // bundle próprio só para as notificações saírem com o ícone do app
+        .executableTarget(
+            name: "MailForAINotifier",
+            path: "Sources/Notifier"
         )
     ]
 )

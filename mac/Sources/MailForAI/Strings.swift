@@ -170,6 +170,13 @@ struct S {
           + "it asks about, an ad, and a message with hidden instructions. Nothing touches your "
           + "real mailbox.")
     }
+    static var testNotification: String { t("Testar notificação", "Test notification") }
+    static var notificationHelp: String {
+        t("Na primeira vez o macOS pergunta se pode notificar — é preciso permitir para o "
+          + "agente avisar quando responder sozinho.",
+          "The first time, macOS asks whether it may notify you — allow it, or the agent cannot "
+          + "tell you when it answers on its own.")
+    }
     static var settingsIntegrations: String { t("Integrações", "Integrations") }
     static var integrationHook: String {
         t("Avisar no Claude Code quando algo estiver esperando",

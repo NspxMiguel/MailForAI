@@ -99,8 +99,11 @@ struct SettingsView: View {
             HStack {
                 Button(S.runSelfTest) { store.rodarAutoteste() }
                     .disabled(store.testando)
+                Button(S.testNotification) { store.testarNotificacao() }
                 if store.testando { ProgressView().controlSize(.small) }
             }
+            Text(S.notificationHelp).font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(S.selfTestHelp).font(.caption2).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let saida = store.testeSaida {
