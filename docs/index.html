@@ -17,46 +17,49 @@
       <p class="sub" id="sub">carregando…</p>
     </div>
   </div>
+  <div class="idiomas" id="idiomas">
+    <button class="chip-lang" data-lang="pt">PT</button><button class="chip-lang" data-lang="en">EN</button>
+  </div>
   <div class="resumo" id="resumo" hidden>
-    <div class="cartao"><strong id="n-sent">0</strong><span>enviadas</span></div>
-    <div class="cartao"><strong id="n-blocked">0</strong><span>recusadas</span></div>
-    <div class="cartao"><strong id="n-failed">0</strong><span>falharam</span></div>
+    <div class="cartao"><strong id="n-sent">0</strong><span data-i18n="sent">enviadas</span></div>
+    <div class="cartao"><strong id="n-blocked">0</strong><span data-i18n="refused">recusadas</span></div>
+    <div class="cartao"><strong id="n-failed">0</strong><span data-i18n="failed">falharam</span></div>
   </div>
 </header>
 
 <main>
   <section id="tela-senha" class="painel" hidden>
-    <h2>Este histórico está cifrado</h2>
-    <p>O arquivo é público, o conteúdo não. Digite a senha usada em
+    <h2 data-i18n="encTitle">Este histórico está cifrado</h2>
+    <p data-i18n="encBody">O arquivo é público, o conteúdo não. Digite a senha usada em
       <code>mailforai publish</code> — a decifragem acontece aqui no navegador.</p>
     <form id="form-senha">
-      <input type="password" id="senha" placeholder="senha do histórico" autocomplete="current-password" required>
-      <button type="submit">Abrir</button>
+      <input type="password" id="senha" placeholder="senha do histórico" data-i18n-ph="passPlaceholder" autocomplete="current-password" required>
+      <button type="submit" data-i18n="open">Abrir</button>
     </form>
     <p class="erro" id="erro-senha" hidden></p>
-    <label class="lembrar"><input type="checkbox" id="lembrar"> lembrar neste navegador</label>
+    <label class="lembrar"><input type="checkbox" id="lembrar"> <span data-i18n="remember">lembrar neste navegador</span></label>
   </section>
 
   <section id="tela-lista" hidden>
     <div class="filtros">
-      <input type="search" id="busca" placeholder="buscar por assunto, destinatário ou texto…">
+      <input type="search" id="busca" placeholder="buscar por assunto, destinatário ou texto…" data-i18n-ph="searchPlaceholder">
       <div class="chips" id="chips">
-        <button class="chip ativo" data-status="todos">todos</button>
-        <button class="chip" data-status="sent">enviadas</button>
-        <button class="chip" data-status="blocked">recusadas</button>
-        <button class="chip" data-status="failed">falhas</button>
+        <button class="chip ativo" data-status="todos" data-i18n="all">todos</button>
+        <button class="chip" data-status="sent" data-i18n="sent">enviadas</button>
+        <button class="chip" data-status="blocked" data-i18n="refused">recusadas</button>
+        <button class="chip" data-status="failed" data-i18n="failed">falhas</button>
       </div>
     </div>
     <ul class="lista" id="lista"></ul>
-    <p class="vazio" id="vazio" hidden>Nada por aqui ainda.</p>
+    <p class="vazio" id="vazio" hidden data-i18n="empty">Nada por aqui ainda.</p>
   </section>
 
   <!-- Sem histórico publicado, esta página é a apresentação do projeto: é o que
        um visitante que caiu aqui pelo GitHub precisa ler. -->
   <section id="tela-sobre" hidden>
     <div class="painel">
-      <h2>Uma caixa de e-mail que a IA usa sozinha</h2>
-      <p>Agentes já leem sua tela, rodam seu terminal e abrem pull request. E-mail
+      <h2 data-i18n="aboutTitle">Uma caixa de e-mail que a IA usa sozinha</h2>
+      <p data-i18n="aboutBody">Agentes já leem sua tela, rodam seu terminal e abrem pull request. E-mail
         é o canal que sobrou, porque dar uma conta de e-mail para uma IA hoje é
         dar <em>a sua</em> conta de e-mail. O MailForAI separa as duas coisas:
         endereço dedicado, senha no chaveiro do sistema, lista de quem ela pode
@@ -69,52 +72,53 @@ mailforai serve</code></pre>
 
     <div class="grade">
       <div class="painel bloco">
-        <h3>Coleira</h3>
-        <p>Allowlist de destinatário, blocklist e teto de mensagens por 24h,
+        <h3 data-i18n="b1t">Coleira</h3>
+        <p data-i18n="b1b">Allowlist de destinatário, blocklist e teto de mensagens por 24h,
           conferidos antes de cada envio. O que a política recusa fica registrado
           com o motivo.</p>
       </div>
       <div class="painel bloco">
-        <h3>Histórico auditável</h3>
-        <p>Uma linha por tentativa, nunca reescrita — enviada, falhada ou
+        <h3 data-i18n="b2t">Histórico auditável</h3>
+        <p data-i18n="b2b">Uma linha por tentativa, nunca reescrita — enviada, falhada ou
           recusada. Você lê de <code>localhost</code>, ou publica cifrada e lê de
           qualquer lugar.</p>
       </div>
       <div class="painel bloco">
-        <h3>Qualquer IA</h3>
-        <p>Servidor MCP embutido para o Claude Code e afins; CLI com
+        <h3 data-i18n="b3t">Qualquer IA</h3>
+        <p data-i18n="b3b">Servidor MCP embutido para o Claude Code e afins; CLI com
           <code>--json</code> para os agentes que só sabem rodar comando.</p>
       </div>
       <div class="painel bloco">
-        <h3>Identidade</h3>
-        <p>Três modos: a IA diz que é IA, escreve em nome do dono, ou assina como
+        <h3 data-i18n="b4t">Identidade</h3>
+        <p data-i18n="b4b">Três modos: a IA diz que é IA, escreve em nome do dono, ou assina como
           o próprio dono. O padrão é o que não deixa dúvida do outro lado.</p>
       </div>
       <div class="painel bloco">
-        <h3>Ela também lê</h3>
-        <p>Caixa de entrada por IMAP: a IA acompanha a resposta do suporte e
+        <h3 data-i18n="b5t">Ela também lê</h3>
+        <p data-i18n="b5b">Caixa de entrada por IMAP: a IA acompanha a resposta do suporte e
           responde na mesma thread, sem você repassar nada.</p>
       </div>
       <div class="painel bloco">
-        <h3>Sem dependência</h3>
-        <p>Biblioteca padrão do Python 3.9+. Clonar e usar — iCloud, Gmail,
+        <h3 data-i18n="b6t">Sem dependência</h3>
+        <p data-i18n="b6b">Biblioteca padrão do Python 3.9+. Clonar e usar — iCloud, Gmail,
           Fastmail, Zoho, Outlook, Migadu ou qualquer SMTP/IMAP.</p>
       </div>
     </div>
 
     <p class="cta">
-      <a class="botao" href="https://github.com/NspxMiguel/MailForAI">Ver no GitHub</a>
+      <a class="botao" href="https://github.com/NspxMiguel/MailForAI" data-i18n="cta">Ver no GitHub</a>
       <span class="nota" id="nota-erro"></span>
     </p>
   </section>
 </main>
 
 <footer>
-  <a href="https://github.com/NspxMiguel/MailForAI">código no GitHub</a>
+  <a href="https://github.com/NspxMiguel/MailForAI" data-i18n="codeOnGithub">código no GitHub</a>
   <span>·</span>
   <span id="rodape-data"></span>
 </footer>
 
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

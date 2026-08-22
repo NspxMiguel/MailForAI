@@ -4,10 +4,12 @@ import argparse
 import getpass
 import json
 import sys
+from pathlib import Path
 from typing import Any, Dict
 
-from . import (__version__, config, crypto, guard, history, identity, keyring,
-               mailer, providers, reader)
+from . import (__version__, approval, config, crypto, guard, history, identity,
+               keyring, mailer, notify, providers, reader)
+from .i18n import T, language, set_language
 from .paths import CONFIG_FILE, HISTORY_FILE, ensure_home
 
 
@@ -17,7 +19,7 @@ def _out(data: Any, as_json: bool) -> None:
 
 
 def _fail(message: str) -> int:
-    print(f"erro: {message}", file=sys.stderr)
+    print(T("erro: ", "error: ") + message, file=sys.stderr)
     return 1
 
 
@@ -26,10 +28,10 @@ def _fail(message: str) -> int:
 
 def cmd_setup(args) -> int:
     ensure_home()
-    print("MailForAI — configurar uma caixa para a IA usar\n")
+    print(T("MailForAI — configurar uma caixa para a IA usar\n", "MailForAI — set up a mailbox for the AI\n"))
     address = args.address or input("Endereço da IA (ex.: claude@seudominio.dev): ").strip()
     if "@" not in address:
-        return _fail("isso não é um endereço de e-mail")
+        return _fail(T("isso não é um endereço de e-mail", "that is not an email address"))
 
     provider = args.provider
     if not provider:
@@ -108,20 +110,21 @@ def cmd_accounts(args) -> int:
     cfg = config.load()
     accounts = cfg.get("accounts", {})
     if not accounts:
-        print("nenhuma conta — rode 'mailforai setup'")
+        print(T("nenhuma conta — rode 'mailforai setup'", "no mailbox yet — run 'mailforai setup'"))
         return 0
     if args.json:
         _out({"default": cfg.get("default_account"), "accounts": accounts}, True)
         return 0
     for name, account in accounts.items():
-        marca = " (padrão)" if name == cfg.get("default_account") else ""
-        senha = "senha ok" if keyring.has_secret(name) else "SEM SENHA"
+        marca = T(" (padrão)", " (default)") if name == cfg.get("default_account") else ""
+        senha = T("senha ok", "password ok") if keyring.has_secret(name) else T("SEM SENHA", "NO PASSWORD")
         guarda = account.get("guard") or {}
         lista = guarda.get("allowlist") or []
-        alvo = ", ".join(lista) if lista else "qualquer destinatário"
+        alvo = ", ".join(lista) if lista else T("qualquer destinatário", "anyone")
         print(f"{name}{marca}\n  {account['address']} via {account.get('provider')} — {senha}"
-              f"\n  pode escrever para: {alvo}"
-              f"\n  teto: {guarda.get('daily_limit', '-')} msgs/24h")
+              f"\n  " + T("pode escrever para: ", "may write to: ") + alvo
+              + f"\n  " + T("teto: ", "cap: ") + f"{guarda.get('daily_limit', '-')}"
+              + T(" msgs/24h", " msgs/24h"))
     return 0
 
 
@@ -148,17 +151,22 @@ def cmd_send(args) -> int:
     if body == "-" or (body is None and not sys.stdin.isatty()):
         body = sys.stdin.read()
     if not body:
-        return _fail("corpo vazio — use --body ou mande pela entrada padrão")
+        return _fail(T("corpo vazio — use --body ou mande pela entrada padrão",
+                       "empty body — use --body or pipe it through stdin"))
     try:
         result = mailer.send(
             account, args.to, args.subject, body, cc=args.cc, bcc=args.bcc,
             attachments=args.attach, in_reply_to=args.in_reply_to,
-            agent=args.agent, dry_run=args.dry_run,
+            agent=args.agent, dry_run=args.dry_run, reason=args.reason,
         )
     except (guard.GuardError, mailer.SendError, keyring.KeyringError) as exc:
         return _fail(str(exc))
     if args.json:
         _out(result, True)
+    elif result["status"] == "pending":
+        print(T("na fila", "queued") + f" ({result['id']}): {result['subject']} → {', '.join(result['to'])}")
+        print(T("nada sai até você aprovar — 'mailforai pending' mostra a fila",
+                "nothing goes out until you approve — 'mailforai pending' shows the queue"))
     else:
         print(f"{result['status']}: {result['subject']} → {', '.join(result['to'])}")
     return 0
@@ -175,7 +183,7 @@ def cmd_inbox(args) -> int:
         _out(messages, True)
         return 0
     if not messages:
-        print("caixa vazia" if not args.unread else "nada não lido")
+        print(T("caixa vazia", "empty inbox") if not args.unread else T("nada não lido", "nothing unread"))
     for msg in messages:
         marca = "●" if msg["unread"] else " "
         print(f"{marca} [{msg['uid']}] {msg['date'][:16]}  {msg['from'][:38]}\n    {msg['subject']}")
@@ -237,7 +245,7 @@ def cmd_history(args) -> int:
         _out(entries, True)
         return 0
     if not entries:
-        print("nada enviado ainda")
+        print(T("nada enviado ainda", "nothing sent yet"))
     for entry in entries:
         simbolo = {"sent": "→", "failed": "✗", "blocked": "⊘"}.get(entry["status"], "?")
         print(f"{simbolo} {entry['ts'][:16]}  {', '.join(entry['to'])[:40]}"
@@ -285,7 +293,7 @@ def _update_guard(account_name, mutate) -> int:
     cfg = config.load()
     name = account_name or cfg.get("default_account")
     if not name or name not in cfg.get("accounts", {}):
-        return _fail("conta não encontrada")
+        return _fail(T("conta não encontrada", "mailbox not found"))
     account = cfg["accounts"][name]
     account.setdefault("guard", dict(config.DEFAULT_GUARD))
     mutate(account["guard"])
@@ -355,15 +363,206 @@ def cmd_identity(args) -> int:
     return 0
 
 
+def _mostrar_pedido(pedido: Dict[str, Any], completo: bool = False) -> None:
+    print(f"[{pedido['id']}] {pedido['subject'] or '(sem assunto)'}")
+    print(f"       para: {', '.join(pedido['to'])}")
+    if pedido.get("cc"):
+        print(f"       cc:   {', '.join(pedido['cc'])}")
+    print(f"       quem: {pedido['agent']}   quando: {pedido['created'][:16]}")
+    if pedido.get("reason"):
+        print(f"       motivo: {pedido['reason']}")
+    corpo = pedido.get("body") or ""
+    if not completo and len(corpo) > 400:
+        corpo = corpo[:400] + "\n       [...]"
+    print("       " + corpo.replace("\n", "\n       "))
+
+
+def cmd_pending(args) -> int:
+    pedidos = approval.outbox(status=None if args.all else "pending",
+                              account=None if args.all_accounts else args.account,
+                              limit=args.limit)
+    perguntas = approval.questions(status="open")
+    if args.json:
+        _out({"pending": pedidos, "questions": perguntas}, True)
+        return 0
+    if not pedidos and not perguntas:
+        print(T("nada esperando você", "nothing waiting on you"))
+        return 0
+    for pedido in pedidos:
+        marca = {"pending": "?", "sent": "→", "rejected": "⊘", "failed": "✗"}.get(pedido["status"], " ")
+        print(f"{marca} ", end="")
+        _mostrar_pedido(pedido, completo=args.full)
+        print()
+    if pedidos and any(p["status"] == "pending" for p in pedidos):
+        print(T("aprovar: mailforai approve <id>    recusar: mailforai reject <id>",
+                "approve: mailforai approve <id>    reject: mailforai reject <id>"))
+    for pergunta in perguntas:
+        print(f"\n? [{pergunta['id']}] {pergunta['question']}")
+        if pergunta.get("context"):
+            print(f"       contexto: {pergunta['context']}")
+        if pergunta.get("options"):
+            print(f"       opções: {', '.join(pergunta['options'])}")
+        print(f"       responder: mailforai answer {pergunta['id']} \"...\"")
+    return 0
+
+
+def cmd_approve(args) -> int:
+    edits = {"subject": args.subject, "body": args.body, "to": mailer._split(args.to) or None}
+    try:
+        pedido = approval.approve(args.id, by=args.by, edits=edits)
+    except (approval.ApprovalError, config.ConfigError) as exc:
+        return _fail(str(exc))
+    notify.refresh_waiting()
+    if args.json:
+        _out(pedido, True)
+        return 0
+    if pedido["status"] == "sent":
+        print(T("enviado: ", "sent: ") + f"{pedido['subject']} → {', '.join(pedido['to'])}")
+    else:
+        print(f"{pedido['status']}: {pedido.get('note') or ''}")
+    return 0 if pedido["status"] == "sent" else 1
+
+
+def cmd_reject(args) -> int:
+    try:
+        pedido = approval.reject(args.id, by=args.by, note=args.note)
+    except approval.ApprovalError as exc:
+        return _fail(str(exc))
+    notify.refresh_waiting()
+    _out(pedido, True) if args.json else print(T("recusado: ", "rejected: ") + str(pedido["subject"]))
+    return 0
+
+
+def cmd_ask(args) -> int:
+    conta = config.get_account(args.account)
+    pergunta = approval.ask(conta["name"], args.question, context=args.context or "",
+                            options=args.option, agent=args.agent, request_id=args.request)
+    notify.pending_question(pergunta)
+    _out(pergunta, True) if args.json else print(
+        f"pergunta {pergunta['id']} registrada — o dono responde com "
+        f"'mailforai answer {pergunta['id']} \"...\"'")
+    return 0
+
+
+def cmd_answer(args) -> int:
+    try:
+        pergunta = approval.answer(args.id, args.text)
+    except approval.ApprovalError as exc:
+        return _fail(str(exc))
+    notify.refresh_waiting()
+    _out(pergunta, True) if args.json else print(T("respondido: ", "answered: ") + pergunta["question"])
+    return 0
+
+
+def cmd_questions(args) -> int:
+    itens = approval.questions(status=None if args.all else "open", limit=args.limit)
+    if args.json:
+        _out(itens, True)
+        return 0
+    if not itens:
+        print(T("nenhuma pergunta aberta", "no open questions"))
+    for pergunta in itens:
+        marca = {"open": "?", "answered": "✓", "dismissed": "⊘"}.get(pergunta["status"], " ")
+        print(f"{marca} [{pergunta['id']}] {pergunta['question']}")
+        if pergunta.get("answer"):
+            print(f"       → {pergunta['answer']}")
+    return 0
+
+
+def cmd_mode(args) -> int:
+    cfg = config.load()
+    name = args.account or cfg.get("default_account")
+    if not name or name not in cfg.get("accounts", {}):
+        return _fail("conta não encontrada")
+    if args.mode:
+        cfg["accounts"][name].setdefault("approval", {})["mode"] = args.mode
+        config.save(cfg)
+    atual = approval.mode(config.get_account(name))
+    if args.json:
+        _out({"account": name, "mode": atual}, True)
+        return 0
+    print(T(f"conta '{name}': modo {atual}", f"mailbox '{name}': mode {atual}"))
+    print(T("  auto     a IA envia sozinha, respeitando allowlist e teto",
+            "  auto     the AI sends on its own, within allowlist and cap")
+          if atual == "auto" else
+          T("  confirm  a IA cria um pedido e nada sai até você aprovar",
+            "  confirm  the AI queues a request and nothing goes out until you approve"))
+    return 0
+
+
 def cmd_serve(args) -> int:
     from .webserver import serve
     serve(port=args.port, account=args.account, open_browser=not args.no_open)
     return 0
 
 
+def cmd_lang(args) -> int:
+    cfg = config.load()
+    if args.code:
+        cfg["language"] = args.code
+        config.save(cfg)
+        set_language(args.code)
+    elif args.system:
+        cfg.pop("language", None)
+        config.save(cfg)
+        set_language(None)
+    atual = language()
+    if args.json:
+        _out({"language": atual, "saved": cfg.get("language")}, True)
+        return 0
+    print(T(f"idioma: {atual}", f"language: {atual}"))
+    return 0
+
+
+def cmd_hook(args) -> int:
+    """Instala (ou tira) o lembrete no Claude Code, valendo para todo projeto."""
+    import os
+    settings = Path(os.path.expanduser("~/.claude/settings.json"))
+    script = Path(__file__).resolve().parent.parent / "hooks" / "waiting_hook.py"
+    comando = f"python3 {script}"
+
+    if not settings.parent.exists():
+        return _fail("~/.claude não existe — o Claude Code não está instalado aqui")
+    dados = {}
+    if settings.exists():
+        try:
+            dados = json.loads(settings.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return _fail(f"{settings} não é um JSON válido — não vou mexer nele")
+
+    hooks = dados.setdefault("hooks", {})
+    mudou = False
+    for evento in ("UserPromptSubmit", "SessionStart"):
+        grupos = hooks.setdefault(evento, [])
+        ja_tem = any(comando in json.dumps(g) or "waiting_hook.py" in json.dumps(g)
+                     for g in grupos)
+        if args.remove:
+            restantes = [g for g in grupos if "waiting_hook.py" not in json.dumps(g)]
+            if len(restantes) != len(grupos):
+                hooks[evento] = restantes
+                mudou = True
+        elif not ja_tem:
+            grupos.append({"hooks": [{"type": "command", "command": comando, "timeout": 5}]})
+            mudou = True
+
+    if mudou:
+        # backup antes de escrever: settings.json é do usuário, não do app
+        if settings.exists():
+            settings.with_suffix(".json.mailforai-bak").write_text(
+                settings.read_text(encoding="utf-8"), encoding="utf-8")
+        settings.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8")
+    if args.remove:
+        print("lembrete removido" if mudou else "não havia lembrete instalado")
+    else:
+        print(f"lembrete {'instalado' if mudou else 'já estava instalado'} em {settings}")
+        print("Toda sessão do Claude Code, em qualquer projeto, avisa o que está parado.")
+    return 0
+
+
 def cmd_mcp(args) -> int:
     from .mcp_server import run
-    run()
+    run(owner=args.owner)
     return 0
 
 
@@ -411,6 +610,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--attach", action="append", metavar="ARQUIVO")
     p.add_argument("--in-reply-to")
     p.add_argument("--agent", help="quem pediu o envio (vai para o histórico)")
+    p.add_argument("--reason", help="por que mandar isso — o dono lê antes de aprovar")
     p.add_argument("--dry-run", action="store_true", help="valida e monta, mas não envia")
 
     p = add("inbox", cmd_inbox, "listar a caixa de entrada")
@@ -450,6 +650,42 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("limit", cmd_limit, "teto de mensagens por 24h (0 = sem teto)")
     p.add_argument("n", type=int)
 
+    p = add("pending", cmd_pending, "o que está esperando sua aprovação")
+    p.add_argument("--limit", "-n", type=int, default=20)
+    p.add_argument("--all", action="store_true", help="inclui já decididos")
+    p.add_argument("--all-accounts", action="store_true")
+    p.add_argument("--full", action="store_true", help="corpo inteiro, sem cortar")
+
+    p = add("approve", cmd_approve, "aprovar e enviar um pedido da fila")
+    p.add_argument("id")
+    p.add_argument("--subject", help="corrigir o assunto antes de enviar")
+    p.add_argument("--body", help="corrigir o corpo antes de enviar")
+    p.add_argument("--to", help="corrigir o destinatário antes de enviar")
+    p.add_argument("--by", default="dono", help="quem aprovou (vai para o registro)")
+
+    p = add("reject", cmd_reject, "recusar um pedido da fila")
+    p.add_argument("id")
+    p.add_argument("--note", help="o motivo, que a IA lê depois")
+    p.add_argument("--by", default="dono")
+
+    p = add("ask", cmd_ask, "a IA registra uma pergunta para o dono")
+    p.add_argument("question")
+    p.add_argument("--context", help="o que a IA já sabe")
+    p.add_argument("--option", action="append", help="resposta sugerida (repetível)")
+    p.add_argument("--request", help="id do envio que depende desta resposta")
+    p.add_argument("--agent")
+
+    p = add("answer", cmd_answer, "responder uma pergunta da IA")
+    p.add_argument("id")
+    p.add_argument("text")
+
+    p = add("questions", cmd_questions, "perguntas da IA")
+    p.add_argument("--all", action="store_true")
+    p.add_argument("--limit", "-n", type=int, default=20)
+
+    p = add("mode", cmd_mode, "enviar sozinha (auto) ou pedir aprovação (confirm)")
+    p.add_argument("mode", nargs="?", choices=list(approval.MODES))
+
     p = add("identity", cmd_identity, "como a IA se apresenta (ia | assistente | dono)")
     p.add_argument("mode", nargs="?", choices=list(identity.MODES),
                    help="omita para só ver a identidade atual")
@@ -461,11 +697,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-open", action="store_true")
 
-    add("mcp", cmd_mcp, "rodar como servidor MCP (stdio) para a IA plugar")
+    p = add("lang", cmd_lang, "idioma do CLI (pt | en)")
+    p.add_argument("code", nargs="?", choices=["pt", "en"])
+    p.add_argument("--system", action="store_true", help="voltar a seguir o sistema")
+
+    p = add("hook", cmd_hook, "lembrar no Claude Code, em qualquer projeto, o que está parado")
+    p.add_argument("--remove", action="store_true", help="desinstalar o lembrete")
+
+    p = add("mcp", cmd_mcp, "rodar como servidor MCP (stdio) para a IA plugar")
+    p.add_argument("--owner", action="store_true",
+                   help="acrescenta as ferramentas de decisão (aprovar, recusar, responder)")
     return parser
 
 
 def main(argv=None) -> int:
+    # a escolha salva vale antes de imprimir qualquer coisa, inclusive o --help
+    try:
+        set_language(config.load().get("language"))
+    except Exception:
+        pass
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

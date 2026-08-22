@@ -26,7 +26,29 @@
   msm. vc escolhe."* — `mailforai identity` com três modos (`ia`, `assistente`,
   `dono`). Padrão escolhido: `ia`.
 
-## A fazer
+## 21/08/2026 — segunda rodada
 
-- [ ] Traduzir o CLI e a página do histórico para inglês — o repositório é público
-      e o README já está em inglês.
+- [x] *"ja criei o email, so precisamos descobrir agr como te damos acesso a ele"* —
+  `Claude@nspx.dev` existe no iCloud. O acesso é uma **senha de aplicativo**
+  gerada em account.apple.com (só ele pode: exige a senha dele e o 2FA).
+- [ ] *"dai coloca uma opção, de enviar email automaticamente, ou vc ter q confirmar
+  primeiro, tipo o claude code, q tem essas opcoes"* — modos de aprovação.
+- [ ] *"a ai pode fazer varias coisas, como sla, responder email de suporte (...)
+  mando pro email do claude e ele responde pra mim (...) tbm com apps meus por
+  exemplo, se eu implementar funcao de suporte, claude ajuda eles"*.
+- [ ] *"n quero interface web, quero o esquema de homebrew q eu fiz tipo no
+  taskmanager, para parecer um app de vdd. alem de ter o cli pra propria ia poder
+  fazer"* — app nativo via Homebrew, no molde do Mac Task Manager.
+- [ ] *"tbm quero q eu possa aceitar direito por aqui, pelo chat os emails, caso eu
+  esqueça do app"* — aprovar pelo chat do Claude Code.
+- [ ] *"seria legal, se aparece-se sempre, o claude code enchendo o saco, msm se n
+  for no msm projeto, aparece solicitacao de email revisar, aceitar ou recusar"* —
+  aviso de pendência em qualquer sessão, não só neste projeto.
+- [ ] *"a ia tbm faz perguntas pra vc quando necessario, ex: suporte nintendo, eles
+  podem querer perguntar seu id (...) quando precisa de informacao extra colocar
+  informacao extra"* — a IA pergunta, ele responde.
+- [ ] *"pro desing do app dps usamos claude desing (...) quando for fazer o prompt
+  pro claude desing me avisa, q dai vamos usar o fable"* — avisar antes de escrever
+  o prompt do Claude Design.
+- [ ] Traduzir o CLI e a página do histórico (i18n) — regra nova, vale para todo
+      projeto.

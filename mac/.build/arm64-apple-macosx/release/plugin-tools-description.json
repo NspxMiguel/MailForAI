@@ -1,0 +1,307 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.MailForAI-arm64-apple-macosx-release.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources",
+      "importPath" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/MailForAIApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Models.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Store.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Strings.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Views/PanelView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "MailForAI",
+      "moduleOutputPath" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules/MailForAI.swiftmodule",
+      "objects" : [
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/MailForAIApp.swift.o",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Models.swift.o",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Store.swift.o",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Strings.swift.o",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/PanelView.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx13.0",
+        "-whole-module-optimization",
+        "-num-threads",
+        "11",
+        "-serialize-diagnostics",
+        "-O",
+        "-j11",
+        "-DSWIFT_PACKAGE",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "MailForAI_main",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "mac"
+      ],
+      "outputFileMapPath" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/MailForAIApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Models.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Store.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Strings.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/PanelView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules/MailForAI.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/MailForAIApp.swift",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Models.swift",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Store.swift",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Strings.swift",
+        "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Views/PanelView.swift"
+      ],
+      "tempsPath" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build",
+      "wholeModuleOptimization" : true
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "MailForAI" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "MailForAI",
+      "-package-name",
+      "mac",
+      "-c",
+      "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/MailForAIApp.swift",
+      "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Models.swift",
+      "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Store.swift",
+      "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Strings.swift",
+      "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Views/PanelView.swift",
+      "-I",
+      "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules",
+      "-target",
+      "arm64-apple-macosx13.0",
+      "-whole-module-optimization",
+      "-num-threads",
+      "11",
+      "-serialize-diagnostics",
+      "-O",
+      "-j11",
+      "-DSWIFT_PACKAGE",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "MailForAI_main",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "mac",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "MailForAI" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/MailForAIApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Models.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Store.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Strings.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Views/PanelView.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources"
+    },
+    "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/MailForAIApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Models.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/PanelView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Store.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Strings.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.product/Objects.LinkFileList"
+    },
+    "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

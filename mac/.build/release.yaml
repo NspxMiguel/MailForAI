@@ -1,0 +1,66 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "MailForAI-arm64-apple-macosx-release.exe": ["<MailForAI-arm64-apple-macosx-release.exe>"]
+  "MailForAI-arm64-apple-macosx-release.module": ["<MailForAI-arm64-apple-macosx-release.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<MailForAI-arm64-apple-macosx-release.exe>","<MailForAI-arm64-apple-macosx-release.module>"]
+  "test": ["<MailForAI-arm64-apple-macosx-release.exe>","<MailForAI-arm64-apple-macosx-release.module>"]
+default: "main"
+nodes:
+  "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/MailForAIApp.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Models.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Store.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Strings.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Views/PanelView.swift"]
+    outputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources"]
+    description: "Write auxiliary file /Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources"
+
+  "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/MailForAIApp.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Models.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/PanelView.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Store.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Strings.swift.o"]
+    outputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.product/Objects.LinkFileList"
+
+  "/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"]
+    outputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+
+  "<MailForAI-arm64-apple-macosx-release.exe>":
+    tool: phony
+    inputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI"]
+    outputs: ["<MailForAI-arm64-apple-macosx-release.exe>"]
+
+  "<MailForAI-arm64-apple-macosx-release.module>":
+    tool: phony
+    inputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/MailForAIApp.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Models.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Store.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Strings.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/PanelView.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules/MailForAI.swiftmodule"]
+    outputs: ["<MailForAI-arm64-apple-macosx-release.module>"]
+
+  "C.MailForAI-arm64-apple-macosx-release.exe":
+    tool: shell
+    inputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/MailForAIApp.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Models.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/PanelView.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Store.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Strings.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.product/Objects.LinkFileList"]
+    outputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI"]
+    description: "Linking ./.build/arm64-apple-macosx/release/MailForAI"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release","-o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI","-module-name","MailForAI","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-dead_strip","-Xlinker","-alias","-Xlinker","_MailForAI_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx13.0","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "C.MailForAI-arm64-apple-macosx-release.module":
+    tool: shell
+    inputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/MailForAIApp.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Models.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Store.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Strings.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/Views/PanelView.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources"]
+    outputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/MailForAIApp.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Models.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Store.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/Strings.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/PanelView.swift.o","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules/MailForAI.swiftmodule"]
+    description: "Compiling Swift Module 'MailForAI' (5 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","MailForAI","-emit-dependencies","-emit-module","-emit-module-path","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules/MailForAI.swiftmodule","-output-file-map","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/output-file-map.json","-whole-module-optimization","-num-threads","11","-c","@/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/MailForAI.build/sources","-I","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/Modules","-target","arm64-apple-macosx13.0","-whole-module-optimization","-num-threads","11","-serialize-diagnostics","-O","-j11","-DSWIFT_PACKAGE","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/.build/arm64-apple-macosx/release/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","MailForAI_main","-swift-version","5","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","mac"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Sources/MailForAI/","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Package.swift","/Users/miguel/Documents/Claude/Projetos/MailForAI/mac/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

@@ -47,15 +47,14 @@ async function decifrar(blob, senha) {
 async function carregar() {
   const local = await fetch("data/history.json", { cache: "no-store" }).catch(() => null);
   if (local && local.ok) {
-    mostrarLista(await local.json(), "histórico local · nada saiu desta máquina");
+    mostrarLista(await local.json(), "local");
     return;
   }
   const cifrado = await fetch("data/history.enc.json", { cache: "no-store" }).catch(() => null);
   if (!cifrado || !cifrado.ok) {
     // ninguém publicou histórico aqui: a página vira a apresentação do projeto
-    $("sub").textContent = "histórico de e-mail para agentes";
-    $("nota-erro").textContent =
-      "Nenhum histórico publicado neste endereço — rode mailforai serve na sua máquina.";
+    $("sub").textContent = t("about");
+    $("nota-erro").textContent = t("none");
     $("tela-sobre").hidden = false;
     return;
   }
@@ -63,14 +62,14 @@ async function carregar() {
   const lembrada = sessionStorage.getItem(CHAVE_LEMBRAR) || localStorage.getItem(CHAVE_LEMBRAR);
   if (lembrada) {
     try {
-      mostrarLista(await decifrar(blob, lembrada), "histórico publicado · decifrado neste navegador");
+      mostrarLista(await decifrar(blob, lembrada), "published");
       return;
     } catch (_) {
       localStorage.removeItem(CHAVE_LEMBRAR);
       sessionStorage.removeItem(CHAVE_LEMBRAR);
     }
   }
-  $("sub").textContent = "histórico cifrado";
+  $("sub").textContent = t("encrypted");
   $("tela-senha").hidden = false;
   $("senha").focus();
   $("form-senha").addEventListener("submit", async (evento) => {
@@ -81,9 +80,9 @@ async function carregar() {
       const dados = await decifrar(blob, senha);
       ($("lembrar").checked ? localStorage : sessionStorage).setItem(CHAVE_LEMBRAR, senha);
       $("tela-senha").hidden = true;
-      mostrarLista(dados, "histórico publicado · decifrado neste navegador");
+      mostrarLista(dados, "published");
     } catch (erro) {
-      $("erro-senha").textContent = "Senha não confere.";
+      $("erro-senha").textContent = t("wrongPass");
       $("erro-senha").hidden = false;
       $("senha").select();
     }
@@ -92,9 +91,14 @@ async function carregar() {
 
 /* ---------------------------------------------------------------- tela */
 
+let LEGENDA_ATUAL = "about";
+let DADOS_ATUAIS = null;
+
 function mostrarLista(dados, legenda) {
   TODAS = dados.entries || [];
-  $("sub").textContent = legenda;
+  LEGENDA_ATUAL = legenda;
+  DADOS_ATUAIS = dados;
+  $("sub").textContent = t(legenda);
   $("tela-lista").hidden = false;
   $("resumo").hidden = false;
   const conta = (status) => TODAS.filter((e) => e.status === status).length;
@@ -102,7 +106,8 @@ function mostrarLista(dados, legenda) {
   $("n-blocked").textContent = conta("blocked");
   $("n-failed").textContent = conta("failed");
   $("rodape-data").textContent = dados.generated
-    ? "gerado em " + new Date(dados.generated).toLocaleString("pt-BR")
+    ? t("generatedAt") + " " + new Date(dados.generated).toLocaleString(
+        IDIOMA === "pt" ? "pt-BR" : "en-US")
     : "";
   desenhar();
 }
@@ -132,10 +137,11 @@ function desenhar() {
     botao.innerHTML =
       `<span class="assunto"></span><span class="para"></span><span class="data"></span>`;
     // textContent em vez de HTML: o assunto vem de fora e não vira marcação
-    botao.querySelector(".assunto").textContent = entrada.subject || "(sem assunto)";
+    botao.querySelector(".assunto").textContent =
+      entrada.subject || (IDIOMA === "pt" ? "(sem assunto)" : "(no subject)");
     botao.querySelector(".para").textContent = (entrada.to || []).join(", ");
-    botao.querySelector(".data").textContent =
-      new Date(entrada.ts).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    botao.querySelector(".data").textContent = new Date(entrada.ts).toLocaleString(
+      IDIOMA === "pt" ? "pt-BR" : "en-US", { dateStyle: "short", timeStyle: "short" });
 
     const corpo = document.createElement("div");
     corpo.className = "corpo";
@@ -147,15 +153,18 @@ function desenhar() {
     if (entrada.error) {
       const motivo = document.createElement("p");
       motivo.className = "motivo";
-      motivo.textContent = (entrada.status === "blocked" ? "Recusado: " : "Falhou: ") + entrada.error;
+      const rotulo = entrada.status === "blocked"
+        ? (IDIOMA === "pt" ? "Recusado: " : "Refused: ")
+        : (IDIOMA === "pt" ? "Falhou: " : "Failed: ");
+      motivo.textContent = rotulo + entrada.error;
       corpo.appendChild(motivo);
     }
 
     const meta = document.createElement("div");
     meta.className = "meta";
     const campos = [
-      ["conta", entrada.account],
-      ["pedido por", entrada.agent],
+      [IDIOMA === "pt" ? "conta" : "account", entrada.account],
+      [IDIOMA === "pt" ? "pedido por" : "asked by", entrada.agent],
       ["cc", (entrada.cc || []).join(", ")],
       ["anexos", (entrada.attachments || []).join(", ")],
       ["message-id", entrada.message_id],
@@ -184,6 +193,16 @@ $("chips").addEventListener("click", (evento) => {
   chip.classList.add("ativo");
   filtro.status = chip.dataset.status;
   desenhar();
+});
+
+// trocar de idioma redesenha o que o JS escreveu, sem recarregar a página
+document.addEventListener("idioma", () => {
+  if (DADOS_ATUAIS) mostrarLista(DADOS_ATUAIS, LEGENDA_ATUAL);
+  else {
+    $("sub").textContent = t(LEGENDA_ATUAL);
+    const nota = $("nota-erro");
+    if (nota && nota.textContent) nota.textContent = t("none");
+  }
 });
 
 carregar();

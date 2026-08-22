@@ -13,10 +13,16 @@ a browser.
 ```
 mailforai setup                     # one mailbox, any provider
 mailforai send -t support@game.com -s "Save file bug" -b "..."
+mailforai pending                   # what the agent wants to send, awaiting your call
+mailforai approve <id>              # send it
 mailforai inbox                     # read what came back
-mailforai serve                     # what the agent has been sending, in a browser
 ```
 
+- **Nothing goes out unapproved**, unless you say so. Two modes, like a coding
+  agent's permission modes: `confirm` queues every message for your call,
+  `auto` lets it send within the allowlist and the cap.
+- **A real app, not a web page.** A macOS menu-bar app shows the queue with the
+  count on the icon, installs from Homebrew, and approves with one click.
 - **No dependencies.** Python 3.9+ standard library, nothing to `pip install`.
 - **Any provider with app passwords.** iCloud, Gmail, Fastmail, Zoho, Outlook,
   Migadu, or any SMTP/IMAP host.
@@ -24,6 +30,14 @@ mailforai serve                     # what the agent has been sending, in a brow
   MCP client.
 
 ## Install
+
+The Mac app, which brings the CLI with it:
+
+```bash
+brew install --cask nspxmiguel/tap/mailforai
+```
+
+Or the CLI alone, on any machine with Python 3.9+:
 
 ```bash
 git clone https://github.com/NspxMiguel/MailForAI.git
@@ -110,6 +124,72 @@ person, and some services' terms forbid exactly that.
 `Auto-Submitted` also does real work in the other two modes — mail servers read
 it to avoid firing auto-replies at robots.
 
+## Approving what goes out
+
+The agent drafting a support ticket is useful. The agent sending it at 3am
+without you reading it is not, at least not until you trust it. So the mailbox
+has the same two postures a coding agent has:
+
+```bash
+mailforai mode              # which one is on
+mailforai mode confirm      # the default: every message waits for you
+mailforai mode auto         # it sends on its own, still inside the leash below
+```
+
+In `confirm`, `send_email` returns a request id instead of sending, and the
+message sits in the queue until you decide:
+
+```bash
+mailforai pending                          # queue, with the reason the AI gave
+mailforai approve a1b2c3d4                 # send it
+mailforai approve a1b2c3d4 --body "..."    # fix the text first, then send
+mailforai reject a1b2c3d4 --note "I'll open it myself"
+```
+
+Every decision is recorded with who made it — `app`, `chat`, `dono` — and
+rejected requests keep the note, which the agent reads before trying again.
+
+### Three ways to decide, so you actually do
+
+1. **The Mac app.** Menu-bar icon with the number of waiting items; the panel
+   lists each message with subject, recipient, reason and body, and approves or
+   rejects with a click. `--window` opens the same panel as a regular window,
+   for menu bars that are already full.
+2. **The terminal.** `mailforai pending`, `approve`, `reject`.
+3. **Your AI chat.** `mailforai mcp --owner` adds `list_pending`,
+   `approve_email`, `reject_email` and `answer_question`, so you can clear the
+   queue from a conversation you are already in.
+
+And so the queue does not rot forgotten:
+
+```bash
+mailforai hook          # installs a reminder into Claude Code, every project
+```
+
+That hook prints one line at the start of each session and each message —
+only when something is actually waiting — naming what is parked. Remove it with
+`mailforai hook --remove`.
+
+> The owner tools let an AI record your decision. That is the point of
+> approving from a chat, and also its limit: the tool cannot prove the human
+> agreed. The record says the decision came through the chat, and the app shows
+> it. If you want approval that no agent can perform, do not load `--owner` and
+> keep the app or the terminal as the only way in.
+
+## When the AI needs something only you know
+
+Nintendo asks for the console serial, Rockstar wants the Social Club ID. The
+agent should not invent it, and should not send the ticket half-filled:
+
+```bash
+mailforai questions                      # what it asked
+mailforai answer 8f2a1c "NspxMiguel#4471"
+```
+
+Over MCP that is `ask_owner` and `check_answers`. The question shows up in the
+app, in a notification, and in the Claude Code reminder, next to the email it
+is blocking.
+
 ## Keeping it on a leash
 
 An agent with SMTP can go wrong in three expensive ways: writing to the wrong
@@ -153,11 +233,16 @@ mailforai_lib/
   reader.py            IMAP inbox and read
   guard.py             allowlist, blocklist, daily cap
   identity.py          how the agent introduces itself
+  approval.py          the queue, and the questions
+  notify.py            system notifications and the waiting summary
+  i18n.py              Portuguese and English for the CLI
   history.py           the append-only log
   crypto.py            encryption for the published history
   mcp_server.py        MCP server over stdio
   keyring.py           Keychain / libsecret / env var
 docs/                  the history viewer (static, no build step)
+hooks/waiting_hook.py  the Claude Code reminder
+mac/                   the macOS menu-bar app (SwiftPM, no Xcode project)
 ```
 
 ## Notes
@@ -167,8 +252,10 @@ docs/                  the history viewer (static, no build step)
   holds at the protocol level and not only in the signature.
 - **`openssl` is required only by `publish`** — the Python standard library has
   no symmetric cipher. Everything else is stdlib.
-- The CLI and the history viewer are currently in Portuguese; the code and the
-  docs are in English. Translating the interface is open work.
+- **Portuguese and English** everywhere the user reads: the app, the history
+  page and the CLI follow the system language, each can be switched by hand, and
+  `MAILFORAI_LANG=pt|en` forces one. `mailforai lang pt` saves the choice.
+  The argparse help strings are still Portuguese-only — the one gap left.
 
 ## License
 
