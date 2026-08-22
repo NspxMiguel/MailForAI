@@ -328,7 +328,9 @@ struct SetupWizardView: View {
                 await MainActor.run { testando = false; resultado = guardada.err }
                 return
             }
-            let teste = Store.run(cli, ["doctor", "--account", nome, "--json"])
+            // --fix testa as combinações de usuário e formato de senha antes de
+            // desistir: é o erro que mais trava gente na primeira configuração
+            let teste = Store.run(cli, ["doctor", "--account", nome, "--fix", "--json"])
             await MainActor.run {
                 testando = false
                 senha = ""

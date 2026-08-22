@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-from . import (__version__, approval, brain, config, crypto, guard, history, identity,
-               keyring, mailer, memory, notify, providers, reader, watch)
+from . import (__version__, approval, brain, config, crypto, diagnose, guard, history,
+               identity, keyring, mailer, memory, notify, providers, reader, watch)
 from .i18n import T, language, set_language
 from .paths import CONFIG_FILE, HISTORY_FILE, ensure_home
 
@@ -160,6 +160,30 @@ def cmd_doctor(args) -> int:
         result = reader.check(account)
     except keyring.KeyringError as exc:
         return _fail(str(exc))
+
+    autenticou = result["smtp"] == "ok" and result["imap"] == "ok"
+    if not autenticou and (args.fix or args.apple_id):
+        print(T("procurando a combinação certa de usuário e senha…",
+                "looking for the right username and password format…"))
+        try:
+            conserto = diagnose.autofix(account, extra_usernames=args.apple_id)
+        except keyring.KeyringError as exc:
+            return _fail(str(exc))
+        if conserto["fixed"]:
+            print(T("achei: usuário ", "found it: username ") + conserto["username"]
+                  + T(", senha ", ", password ") + conserto["password_format"])
+            account = config.get_account(args.account)
+            result = reader.check(account)
+        else:
+            if args.json:
+                _out({"fixed": False, "attempts": conserto["attempts"]}, True)
+                return 1
+            print(T("nenhuma combinação funcionou. Tentei:",
+                    "no combination worked. Tried:"))
+            for tentativa in conserto["attempts"]:
+                print(f"  {tentativa['username']} ({tentativa['password_format']}) — "
+                      f"{tentativa['detail']}")
+            return 1
     if args.json:
         _out(result, True)
     else:
@@ -757,7 +781,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--stdin", action="store_true",
                    help="ler a senha da entrada padrão (ex.: pbpaste | mailforai secret conta --stdin)")
     add("accounts", cmd_accounts, "listar as contas configuradas")
-    add("doctor", cmd_doctor, "testar login SMTP e IMAP")
+    p = add("doctor", cmd_doctor, "testar login SMTP e IMAP")
+    p.add_argument("--fix", action="store_true",
+                   help="se falhar, procurar o usuário e o formato de senha que funcionam")
+    p.add_argument("--apple-id", action="append", metavar="EMAIL",
+                   help="outro usuário para testar (repetível)")
 
     p = add("send", cmd_send, "enviar uma mensagem")
     p.add_argument("--to", "-t", required=True, help="destinatários separados por vírgula")

@@ -184,7 +184,7 @@ struct SettingsView: View {
         mensagemSenha = S.saving
         Task.detached(priority: .userInitiated) {
             _ = Store.run(cli, ["secret", conta, "--stdin"], stdin: senha)
-            let teste = Store.run(cli, ["doctor", "--json"])
+            let teste = Store.run(cli, ["doctor", "--fix", "--json"])
             await MainActor.run {
                 trocandoSenha = false
                 mensagemSenha = teste.status == 0 ? S.setupWorked
@@ -197,7 +197,7 @@ struct SettingsView: View {
         guard let cli = Store.cliPath() else { return }
         mensagemSenha = S.testing
         Task.detached(priority: .userInitiated) {
-            let teste = Store.run(cli, ["doctor", "--json"])
+            let teste = Store.run(cli, ["doctor", "--fix", "--json"])
             await MainActor.run {
                 mensagemSenha = teste.status == 0 ? S.setupWorked
                     : SetupWizardView.explicar(teste.out + teste.err)

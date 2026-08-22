@@ -73,6 +73,18 @@ without touching anything else you own.
 > `From:` address is the alias; the login is the Apple ID. Getting this backwards
 > is the most common cause of an authentication failure here.
 
+If the login is refused, do not guess — the two things that go wrong are the
+username and the shape of the password, and both can be tested:
+
+```bash
+mailforai doctor --fix --apple-id you@example.com
+```
+
+It tries each candidate username against each plausible format of the password
+you stored (as pasted, without spaces, without the dashes Apple shows), and
+saves the pair that authenticates. The **Test the login** button in the app does
+the same thing.
+
 ## Using it from an AI
 
 ### MCP (Claude Code, and any MCP client)
