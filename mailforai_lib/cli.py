@@ -29,26 +29,27 @@ def _fail(message: str) -> int:
 def cmd_setup(args) -> int:
     ensure_home()
     print(T("MailForAI — configurar uma caixa para a IA usar\n", "MailForAI — set up a mailbox for the AI\n"))
-    address = args.address or input("Endereço da IA (ex.: claude@seudominio.dev): ").strip()
+    address = args.address or input(T("Endereço da IA (ex.: claude@seudominio.dev): ",
+                                      "Address for the AI (e.g. claude@yourdomain.dev): ")).strip()
     if "@" not in address:
         return _fail(T("isso não é um endereço de e-mail", "that is not an email address"))
 
     provider = args.provider
     if not provider:
         chute = providers.guess(address)
-        print("\nProvedores:")
+        print(T("\nProvedores:", "\nProviders:"))
         for key, preset in providers.PROVIDERS.items():
             marca = " (chute pelo domínio)" if key == chute else ""
             print(f"  {key:9} {preset['label']}{marca}")
-        provider = input(f"\nProvedor [{chute}]: ").strip() or chute
+        provider = input(T(f"\nProvedor [{chute}]: ", f"\nProvider [{chute}]: ")).strip() or chute
     if provider not in providers.PROVIDERS:
         return _fail(f"provedor '{provider}' desconhecido")
 
     preset = providers.PROVIDERS[provider]
     username = args.username
     if not username:
-        print(f"\nUsuário de login — {preset['username_hint']}")
-        username = input(f"Usuário [{address}]: ").strip() or address
+        print(T("\nUsuário de login — ", "\nLogin username — ") + preset["username_hint"])
+        username = input(T(f"Usuário [{address}]: ", f"Username [{address}]: ")).strip() or address
 
     smtp_host = args.smtp_host
     imap_host = args.imap_host
@@ -61,32 +62,42 @@ def cmd_setup(args) -> int:
         name=name, address=address, provider=provider, username=username,
         display_name=args.display_name, smtp_host=smtp_host, imap_host=imap_host,
     )
-    print("\nComo a IA se apresenta para quem recebe:")
-    print("  ia          diz que é um assistente de IA — o padrão, e o único sem ambiguidade")
-    print("  assistente  escreve em nome do dono, sem entrar no mérito de ser software")
-    print("  dono        assina como o próprio dono; quem recebe pensa estar falando com ele")
-    modo = (args.identity or input("Modo [ia]: ").strip() or "ia")
+    print(T("\nComo a IA se apresenta para quem recebe:",
+            "\nHow the AI introduces itself to recipients:"))
+    print(T("  ia          diz que é um assistente de IA — o padrão, e o único sem ambiguidade",
+            "  ia          says it is an AI assistant — the default, and the only unambiguous one"))
+    print(T("  assistente  escreve em nome do dono, sem entrar no mérito de ser software",
+            "  assistente  writes on the owner's behalf, without arguing about software"))
+    print(T("  dono        assina como o próprio dono; quem recebe pensa estar falando com ele",
+            "  dono        signs as the owner; recipients believe they are talking to them"))
+    modo = (args.identity or input(T("Modo [ia]: ", "Mode [ia]: ")).strip() or "ia")
     if modo not in identity.MODES:
         return _fail(f"modo '{modo}' não existe")
-    dono = args.owner_name or input("Nome do dono da caixa (ex.: Miguel): ").strip()
+    dono = args.owner_name or input(T("Nome do dono da caixa (ex.: Miguel): ",
+                                      "Name of the mailbox owner (e.g. Miguel): ")).strip()
     account["identity"] = dict(identity.DEFAULT_IDENTITY)
     account["identity"].update({"mode": modo, "owner_name": dono,
                                 "agent_name": account["display_name"]})
 
     config.add_account(name, account)
-    print(f"\nConta '{name}' gravada em {CONFIG_FILE}")
+    print(T(f"\nConta '{name}' gravada em {CONFIG_FILE}",
+            f"\nMailbox '{name}' saved to {CONFIG_FILE}"))
     completa = config.get_account(name)
-    print(f"As mensagens sairão como: {identity.display_name(completa)} <{address}>")
+    print(T("As mensagens sairão como: ", "Messages will go out as: ")
+          + f"{identity.display_name(completa)} <{address}>")
 
-    print(f"\nSenha — {preset['secret_hint']}")
-    print("Ela vai para o chaveiro do sistema. Não fica em arquivo nenhum.")
-    secret = getpass.getpass("Senha (não aparece na tela): ")
+    print(T("\nSenha — ", "\nPassword — ") + preset["secret_hint"])
+    print(T("Ela vai para o chaveiro do sistema. Não fica em arquivo nenhum.",
+            "It goes to the system keychain. It is never written to a file."))
+    secret = getpass.getpass(T("Senha (não aparece na tela): ",
+                               "Password (not echoed): "))
     if secret:
         backend = keyring.set_secret(name, secret)
-        print(f"Senha guardada no {backend}.")
-        print("\nTestando login...")
+        print(T("Senha guardada no ", "Password stored in the ") + backend + ".")
+        print(T("\nTestando login...", "\nTesting the login..."))
         return cmd_doctor(argparse.Namespace(account=name, json=False))
-    print(f"\nSem senha ainda. Grave depois com: mailforai secret {name}")
+    print(T(f"\nSem senha ainda. Grave depois com: mailforai secret {name}",
+            f"\nNo password yet. Store it later with: mailforai secret {name}"))
     return 0
 
 
@@ -353,24 +364,28 @@ def cmd_identity(args) -> int:
     if args.json:
         _out(resumo, True)
         return 0
-    print(f"modo: {resumo['mode']}\n"
-          f"De:   {resumo['from']}\n"
-          f"assinatura:\n  " + resumo["signature"].replace("\n", "\n  "))
-    print("cabeçalhos: " + (", ".join(f"{k}: {v}" for k, v in resumo["headers"].items())
-                            or "nenhum — a mensagem não se anuncia como automática"))
+    print(T("modo: ", "mode: ") + resumo["mode"] + "\n"
+          + T("De:   ", "From: ") + resumo["from"] + "\n"
+          + T("assinatura:\n  ", "signature:\n  ") + resumo["signature"].replace("\n", "\n  "))
+    print(T("cabeçalhos: ", "headers: ")
+          + (", ".join(f"{k}: {v}" for k, v in resumo["headers"].items())
+             or T("nenhum — a mensagem não se anuncia como automática",
+                  "none — the message does not announce itself as automated")))
     if resumo["mode"] == "dono":
-        print("\naviso: neste modo quem recebe acredita estar falando com a pessoa.")
+        print(T("\naviso: neste modo quem recebe acredita estar falando com a pessoa.",
+                "\nwarning: in this mode recipients believe they are talking to the person."))
     return 0
 
 
 def _mostrar_pedido(pedido: Dict[str, Any], completo: bool = False) -> None:
     print(f"[{pedido['id']}] {pedido['subject'] or '(sem assunto)'}")
-    print(f"       para: {', '.join(pedido['to'])}")
+    print("       " + T("para: ", "to:   ") + ", ".join(pedido["to"]))
     if pedido.get("cc"):
-        print(f"       cc:   {', '.join(pedido['cc'])}")
-    print(f"       quem: {pedido['agent']}   quando: {pedido['created'][:16]}")
+        print("       cc:   " + ", ".join(pedido["cc"]))
+    print("       " + T("quem: ", "who:  ") + pedido["agent"]
+          + T("   quando: ", "   when: ") + pedido["created"][:16])
     if pedido.get("reason"):
-        print(f"       motivo: {pedido['reason']}")
+        print("       " + T("motivo: ", "why:  ") + pedido["reason"])
     corpo = pedido.get("body") or ""
     if not completo and len(corpo) > 400:
         corpo = corpo[:400] + "\n       [...]"
@@ -399,10 +414,11 @@ def cmd_pending(args) -> int:
     for pergunta in perguntas:
         print(f"\n? [{pergunta['id']}] {pergunta['question']}")
         if pergunta.get("context"):
-            print(f"       contexto: {pergunta['context']}")
+            print("       " + T("contexto: ", "context: ") + pergunta["context"])
         if pergunta.get("options"):
-            print(f"       opções: {', '.join(pergunta['options'])}")
-        print(f"       responder: mailforai answer {pergunta['id']} \"...\"")
+            print("       " + T("opções: ", "options: ") + ", ".join(pergunta["options"]))
+        print("       " + T("responder: ", "answer with: ")
+              + f"mailforai answer {pergunta['id']} \"...\"")
     return 0
 
 
@@ -439,8 +455,9 @@ def cmd_ask(args) -> int:
                             options=args.option, agent=args.agent, request_id=args.request)
     notify.pending_question(pergunta)
     _out(pergunta, True) if args.json else print(
-        f"pergunta {pergunta['id']} registrada — o dono responde com "
-        f"'mailforai answer {pergunta['id']} \"...\"'")
+        T(f"pergunta {pergunta['id']} registrada — o dono responde com ",
+          f"question {pergunta['id']} recorded — the owner answers with ")
+        + f"'mailforai answer {pergunta['id']} \"...\"'")
     return 0
 
 

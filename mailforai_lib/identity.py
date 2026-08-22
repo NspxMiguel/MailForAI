@@ -15,6 +15,8 @@ que engana por omissão seria escolha minha, não dele.
 
 from typing import Any, Dict
 
+from .i18n import T
+
 MODES = ("ia", "assistente", "dono")
 
 DEFAULT_IDENTITY = {
@@ -46,8 +48,9 @@ def display_name(account: Dict[str, Any]) -> str:
     if identity["mode"] == "dono":
         return dono or agente
     if identity["mode"] == "assistente":
-        return f"{agente} · assistente de {dono}" if dono else f"{agente} · assistente"
-    return f"{agente} (IA de {dono})" if dono else f"{agente} (IA)"
+        rotulo = T("assistente de ", "assistant to ")
+        return f"{agente} · {rotulo}{dono}" if dono else f"{agente} · " + T("assistente", "assistant")
+    return (f"{agente} (" + T("IA de ", "AI of ") + f"{dono})") if dono else f"{agente} (" + T("IA", "AI") + ")"
 
 
 def signature(account: Dict[str, Any]) -> str:
@@ -59,9 +62,11 @@ def signature(account: Dict[str, Any]) -> str:
     if identity["mode"] == "dono":
         return dono or ""
     if identity["mode"] == "assistente":
-        return f"{agente}, assistente de {dono}" if dono else agente
-    linha = f"{agente}, assistente de IA de {dono}" if dono else f"{agente}, assistente de IA"
-    return f"{linha}\nEsta mensagem foi escrita por um agente automatizado."
+        return f"{agente}, " + T("assistente de ", "assistant to ") + dono if dono else agente
+    linha = (f"{agente}, " + T("assistente de IA de ", "AI assistant to ") + dono) if dono else \
+        f"{agente}, " + T("assistente de IA", "AI assistant")
+    return linha + T("\nEsta mensagem foi escrita por um agente automatizado.",
+                     "\nThis message was written by an automated agent.")
 
 
 def sign(body: str, account: Dict[str, Any]) -> str:

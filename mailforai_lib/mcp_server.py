@@ -324,6 +324,13 @@ def _handle(message: Dict[str, Any]) -> Dict[str, Any]:
 def run(owner: bool = False) -> None:
     global OWNER_MODE
     OWNER_MODE = owner
+    # a assinatura do e-mail sai no idioma escolhido pelo dono, e quem serve o
+    # MCP não passa pelo main() do CLI, onde essa escolha é carregada
+    try:
+        from .i18n import set_language
+        set_language(config.load().get("language"))
+    except Exception:
+        pass
     for line in sys.stdin:
         line = line.strip()
         if not line:

@@ -124,6 +124,14 @@ person, and some services' terms forbid exactly that.
 `Auto-Submitted` also does real work in the other two modes — mail servers read
 it to avoid firing auto-replies at robots.
 
+The signature follows the interface language, so a mailbox set to Portuguese
+signs in Portuguese. Writing mostly to English-speaking support desks? Pin the
+text and the language stops mattering:
+
+```bash
+mailforai identity --signature "Claude, AI assistant to Miguel"
+```
+
 ## Approving what goes out
 
 The agent drafting a support ticket is useful. The agent sending it at 3am
