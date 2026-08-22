@@ -5,3 +5,10 @@ __pycache__/
 # artefatos de build do app; o cask compila na máquina de quem instala
 mac/.build/
 mac/MailForAI.app/
+
+# Notas de trabalho: são minhas e do Claude, não do repositório.
+PEDIDOS.md
+CONTRATO.md
+IDEIAS.md
+NOTAS.md
+PROMPT-*.md
