@@ -52,10 +52,11 @@ async function carregar() {
   }
   const cifrado = await fetch("data/history.enc.json", { cache: "no-store" }).catch(() => null);
   if (!cifrado || !cifrado.ok) {
-    $("sub").textContent = "nenhum histórico encontrado";
-    $("texto-erro").textContent =
-      "A página não achou data/history.json nem data/history.enc.json.";
-    $("tela-erro").hidden = false;
+    // ninguém publicou histórico aqui: a página vira a apresentação do projeto
+    $("sub").textContent = "histórico de e-mail para agentes";
+    $("nota-erro").textContent =
+      "Nenhum histórico publicado neste endereço — rode mailforai serve na sua máquina.";
+    $("tela-sobre").hidden = false;
     return;
   }
   const blob = await cifrado.json();

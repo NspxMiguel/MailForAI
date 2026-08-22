@@ -51,11 +51,51 @@
     <p class="vazio" id="vazio" hidden>Nada por aqui ainda.</p>
   </section>
 
-  <section id="tela-erro" class="painel" hidden>
-    <h2>Sem histórico para mostrar</h2>
-    <p id="texto-erro"></p>
-    <p>Rode <code>mailforai serve</code> para ver o histórico local, ou
-      <code>mailforai publish</code> para gerar a versão cifrada deste site.</p>
+  <!-- Sem histórico publicado, esta página é a apresentação do projeto: é o que
+       um visitante que caiu aqui pelo GitHub precisa ler. -->
+  <section id="tela-sobre" hidden>
+    <div class="painel">
+      <h2>Uma caixa de e-mail que a IA usa sozinha</h2>
+      <p>Agentes já leem sua tela, rodam seu terminal e abrem pull request. E-mail
+        é o canal que sobrou, porque dar uma conta de e-mail para uma IA hoje é
+        dar <em>a sua</em> conta de e-mail. O MailForAI separa as duas coisas:
+        endereço dedicado, senha no chaveiro do sistema, lista de quem ela pode
+        escrever, teto diário, e um histórico que você lê nesta página.</p>
+      <pre class="demo"><code>mailforai setup
+mailforai send -t suporte@jogo.com -s "Bug no save" -b "..."
+mailforai inbox
+mailforai serve</code></pre>
+    </div>
+
+    <div class="grade">
+      <div class="painel bloco">
+        <h3>Coleira</h3>
+        <p>Allowlist de destinatário, blocklist e teto de mensagens por 24h,
+          conferidos antes de cada envio. O que a política recusa fica registrado
+          com o motivo.</p>
+      </div>
+      <div class="painel bloco">
+        <h3>Histórico auditável</h3>
+        <p>Uma linha por tentativa, nunca reescrita — enviada, falhada ou
+          recusada. Você lê de <code>localhost</code>, ou publica cifrada e lê de
+          qualquer lugar.</p>
+      </div>
+      <div class="painel bloco">
+        <h3>Qualquer IA</h3>
+        <p>Servidor MCP embutido para o Claude Code e afins; CLI com
+          <code>--json</code> para os agentes que só sabem rodar comando.</p>
+      </div>
+      <div class="painel bloco">
+        <h3>Sem dependência</h3>
+        <p>Biblioteca padrão do Python 3.9+. Clonar e usar — iCloud, Gmail,
+          Fastmail, Zoho, Outlook, Migadu ou qualquer SMTP/IMAP.</p>
+      </div>
+    </div>
+
+    <p class="cta">
+      <a class="botao" href="https://github.com/NspxMiguel/MailForAI">Ver no GitHub</a>
+      <span class="nota" id="nota-erro"></span>
+    </p>
   </section>
 </main>
 
