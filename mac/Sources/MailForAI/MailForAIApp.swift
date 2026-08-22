@@ -1,31 +1,32 @@
 import SwiftUI
 
-/// Cria a janela quando o app roda em modo janela.
+/// Abre e mantém a janela do app.
 ///
 /// Um app de barra de menus é `LSUIElement`, e nesse modo o SwiftUI não abre
-/// cena de janela sozinho — a `WindowGroup` fica declarada e nada aparece. Por
-/// isso a janela nasce aqui, na mão, com política de ativação trocada antes.
+/// cena de janela sozinho. Por isso a janela nasce aqui, na mão.
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    static let windowMode: Bool =
-        CommandLine.arguments.contains("--window")
-        || ProcessInfo.processInfo.environment["MAILFORAI_UI_WINDOW"] == "1"
-
     private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in Store.shared.start() }
-        if Self.windowMode { mostrarJanela() }
+        // A janela abre já na primeira execução. O ícone da barra some quando a
+        // barra está cheia — o macOS esconde o que não cabe —, e um app que não
+        // mostra nada ao abrir passa por quebrado.
+        mostrarJanela()
     }
 
-    /// Abrir o app de novo (Launchpad, Finder, Dock) mostra a janela.
-    ///
-    /// Sem isto o app é inalcançável em barra de menus cheia: o macOS esconde
-    /// os ícones que não cabem, e clicar no app não fazia nada visível.
+    /// Clicar no app no Launchpad, Finder ou Dock traz a janela de volta.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         mostrarJanela()
         return true
     }
 
+    /// Fechar a janela não encerra o app: ele continua vigiando pela barra.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    @MainActor
     func mostrarJanela() {
         NSApp.setActivationPolicy(.regular)
         if let window {
@@ -34,16 +35,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         // contentView, e não contentViewController: com o controller o SwiftUI
-        // impõe o fitting size e a janela abre espremida, cortando a fila.
+        // impõe o fitting size e a janela abre espremida.
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 940, height: 620),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
-        window.contentView = NSHostingView(rootView: PanelView(store: Store.shared))
+        window.contentView = NSHostingView(rootView: RootView(store: Store.shared))
         window.title = "MailForAI"
-        window.setContentSize(NSSize(width: 420, height: 620))
-        window.center()
+        window.setFrameAutosaveName("MailForAIMainWindow")
         window.isReleasedWhenClosed = false
+        window.center()
         window.makeKeyAndOrderFront(nil)
         self.window = window
         NSApp.activate(ignoringOtherApps: true)
@@ -57,13 +58,13 @@ struct MailForAIApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            PanelView(store: store)
-                .onAppear { store.start() }
+            MenuBarPanel(store: store) {
+                (NSApp.delegate as? AppDelegate)?.mostrarJanela()
+            }
         } label: {
-            // o número no ícone é o ponto do app: dá para saber que tem coisa
-            // parada sem abrir nada. Ícone e número precisam sair como UM Text
-            // interpolado — dois elementos soltos aqui e o SwiftUI desenha só o
-            // primeiro, deixando o contador invisível.
+            // Ícone e número precisam sair como UM Text interpolado — dois
+            // elementos soltos aqui e o SwiftUI desenha só o primeiro, deixando
+            // o contador invisível.
             if store.waitingCount > 0 {
                 Text("\(Image(systemName: "tray.full.fill")) \(store.waitingCount)")
             } else {

@@ -21,8 +21,13 @@ mailforai inbox                     # read what came back
 - **Nothing goes out unapproved**, unless you say so. Two modes, like a coding
   agent's permission modes: `confirm` queues every message for your call,
   `auto` lets it send within the allowlist and the cap.
-- **A real app, not a web page.** A macOS menu-bar app shows the queue with the
-  count on the icon, installs from Homebrew, and approves with one click.
+- **A real app, not a web page.** A macOS app with an inbox, the approval queue,
+  sent mail, its memory and every setting — plus a menu-bar item with the count.
+  Setting up a mailbox is a guided flow with the steps for each provider; you
+  never open a terminal.
+- **It reads and answers by itself.** New mail is read, understood and either
+  answered, queued for you, ignored, or escalated — and it learns what it needs
+  to know about you along the way, so it stops asking twice.
 - **No dependencies.** Python 3.9+ standard library, nothing to `pip install`.
 - **Any provider with app passwords.** iCloud, Gmail, Fastmail, Zoho, Outlook,
   Migadu, or any SMTP/IMAP host.
@@ -131,6 +136,55 @@ text and the language stops mattering:
 ```bash
 mailforai identity --signature "Claude, AI assistant to Miguel"
 ```
+
+## Reading and answering on its own
+
+`mailforai watch` (or **Check now** in the app) reads what arrived and decides
+one of four things per message:
+
+| Decision | What happens |
+| --- | --- |
+| `reply` | drafts the answer and follows the mailbox mode — sent, or queued for you |
+| `ask` | a fact is missing that only you have; it opens a question instead of guessing |
+| `ignore` | newsletters, receipts, automated notices — no reply |
+| `escalate` | money, banking, cancellations, legal — it does not answer, it warns you |
+
+A draft it is not confident about never goes out on its own, even in `auto`
+mode: below `min_confidence` it lands in the queue anyway.
+
+The model that reads is configurable — by default the `claude` command already
+on the machine, so there is no new API key to get. Anthropic, Groq and Gemini
+work too.
+
+### What it may read
+
+On iCloud a custom-domain address is an **alias**: `claude@yourdomain.dev`
+lands in the same mailbox as your personal mail, and the app-specific password
+opens all of it. So the default scope is `alias` — the agent only looks at
+messages addressed to it, and skips everything else, recording each skip.
+
+```bash
+mailforai scope           # what it is now
+mailforai scope alias     # only mail addressed to the agent (default)
+mailforai scope all       # the whole mailbox — only on a mailbox that is his alone
+```
+
+That is a software leash, not a cryptographic one. For real separation, host
+the agent's mailbox somewhere your personal mail is not.
+
+## What it remembers about you
+
+Support asks for a console serial, an account ID, an order number. Answer once:
+
+```bash
+mailforai memory                                  # what it knows
+mailforai memory --add "PSN ID" nspxmiguel --category conta
+mailforai memory --forget psn-id
+```
+
+Answering a question in the app or the CLI files the fact automatically, and the
+agent reads that list before writing anything. It is a plain JSON file at
+`~/.mailforai/memory.json` — readable and deletable without any tool.
 
 ## Approving what goes out
 

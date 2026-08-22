@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-from . import (__version__, approval, config, crypto, guard, history, identity,
-               keyring, mailer, notify, providers, reader)
+from . import (__version__, approval, brain, config, crypto, guard, history, identity,
+               keyring, mailer, memory, notify, providers, reader, watch)
 from .i18n import T, language, set_language
 from .paths import CONFIG_FILE, HISTORY_FILE, ensure_home
 
@@ -29,12 +29,16 @@ def _fail(message: str) -> int:
 def cmd_setup(args) -> int:
     ensure_home()
     print(T("MailForAI — configurar uma caixa para a IA usar\n", "MailForAI — set up a mailbox for the AI\n"))
+    if args.no_prompt and not args.address:
+        return _fail(T("--no-prompt exige --address", "--no-prompt requires --address"))
     address = args.address or input(T("Endereço da IA (ex.: claude@seudominio.dev): ",
                                       "Address for the AI (e.g. claude@yourdomain.dev): ")).strip()
     if "@" not in address:
         return _fail(T("isso não é um endereço de e-mail", "that is not an email address"))
 
     provider = args.provider
+    if not provider and args.no_prompt:
+        provider = providers.guess(address)
     if not provider:
         chute = providers.guess(address)
         print(T("\nProvedores:", "\nProviders:"))
@@ -47,6 +51,8 @@ def cmd_setup(args) -> int:
 
     preset = providers.PROVIDERS[provider]
     username = args.username
+    if not username and args.no_prompt:
+        username = address
     if not username:
         print(T("\nUsuário de login — ", "\nLogin username — ") + preset["username_hint"])
         username = input(T(f"Usuário [{address}]: ", f"Username [{address}]: ")).strip() or address
@@ -62,19 +68,22 @@ def cmd_setup(args) -> int:
         name=name, address=address, provider=provider, username=username,
         display_name=args.display_name, smtp_host=smtp_host, imap_host=imap_host,
     )
-    print(T("\nComo a IA se apresenta para quem recebe:",
-            "\nHow the AI introduces itself to recipients:"))
-    print(T("  ia          diz que é um assistente de IA — o padrão, e o único sem ambiguidade",
-            "  ia          says it is an AI assistant — the default, and the only unambiguous one"))
-    print(T("  assistente  escreve em nome do dono, sem entrar no mérito de ser software",
-            "  assistente  writes on the owner's behalf, without arguing about software"))
-    print(T("  dono        assina como o próprio dono; quem recebe pensa estar falando com ele",
-            "  dono        signs as the owner; recipients believe they are talking to them"))
-    modo = (args.identity or input(T("Modo [ia]: ", "Mode [ia]: ")).strip() or "ia")
+    if not args.no_prompt:
+        print(T("\nComo a IA se apresenta para quem recebe:",
+                "\nHow the AI introduces itself to recipients:"))
+        print(T("  ia          diz que é um assistente de IA — o padrão, e o único sem ambiguidade",
+                "  ia          says it is an AI assistant — the default, and the only unambiguous one"))
+        print(T("  assistente  escreve em nome do dono, sem entrar no mérito de ser software",
+                "  assistente  writes on the owner's behalf, without arguing about software"))
+        print(T("  dono        assina como o próprio dono; quem recebe pensa estar falando com ele",
+                "  dono        signs as the owner; recipients believe they are talking to them"))
+    modo = args.identity or ("ia" if args.no_prompt
+                             else (input(T("Modo [ia]: ", "Mode [ia]: ")).strip() or "ia"))
     if modo not in identity.MODES:
         return _fail(f"modo '{modo}' não existe")
-    dono = args.owner_name or input(T("Nome do dono da caixa (ex.: Miguel): ",
-                                      "Name of the mailbox owner (e.g. Miguel): ")).strip()
+    dono = args.owner_name or ("" if args.no_prompt
+                               else input(T("Nome do dono da caixa (ex.: Miguel): ",
+                                            "Name of the mailbox owner (e.g. Miguel): ")).strip())
     account["identity"] = dict(identity.DEFAULT_IDENTITY)
     account["identity"].update({"mode": modo, "owner_name": dono,
                                 "agent_name": account["display_name"]})
@@ -86,6 +95,10 @@ def cmd_setup(args) -> int:
     print(T("As mensagens sairão como: ", "Messages will go out as: ")
           + f"{identity.display_name(completa)} <{address}>")
 
+    if args.no_prompt:
+        print(T(f"\nSem senha ainda. Grave com: mailforai secret {name} --stdin",
+                f"\nNo password yet. Store it with: mailforai secret {name} --stdin"))
+        return 0
     print(T("\nSenha — ", "\nPassword — ") + preset["secret_hint"])
     print(T("Ela vai para o chaveiro do sistema. Não fica em arquivo nenhum.",
             "It goes to the system keychain. It is never written to a file."))
@@ -102,7 +115,9 @@ def cmd_setup(args) -> int:
 
 
 def cmd_secret(args) -> int:
-    account = config.get_account(args.account)
+    # aceita tanto `secret claude` quanto `secret --account claude`: a primeira
+    # forma é a que aparece nas mensagens de ajuda, e tinha que funcionar
+    account = config.get_account(args.name or args.account)
     if args.stdin:
         # `pbpaste | mailforai secret conta --stdin` leva a senha da área de
         # transferência direto para o chaveiro, sem passar por tela nem histórico
@@ -466,7 +481,11 @@ def cmd_answer(args) -> int:
         pergunta = approval.answer(args.id, args.text)
     except approval.ApprovalError as exc:
         return _fail(str(exc))
+    # o dado que ele acabou de dar não volta a ser perguntado
+    aprendido = memory.learn_from_answer(pergunta["question"], args.text)
     notify.refresh_waiting()
+    if aprendido and not args.json:
+        print(T("guardei: ", "learned: ") + f"{aprendido['label']} = {aprendido['value']}")
     _out(pergunta, True) if args.json else print(T("respondido: ", "answered: ") + pergunta["question"])
     return 0
 
@@ -543,6 +562,110 @@ def cmd_lang(args) -> int:
         _out({"language": atual, "saved": cfg.get("language")}, True)
         return 0
     print(T(f"idioma: {atual}", f"language: {atual}"))
+    return 0
+
+
+def cmd_watch(args) -> int:
+    conta = config.get_account(args.account)
+    if args.once or args.dry_run:
+        try:
+            feitos = watch.scan_once(conta, dry_run=args.dry_run)
+        except Exception as exc:
+            return _fail(str(exc))
+        if args.json:
+            _out(feitos, True)
+            return 0
+        if not feitos:
+            print(T("nada novo na caixa", "nothing new in the inbox"))
+        for item in feitos:
+            print(f"[{item['action']}] {item.get('subject')} — {(item.get('from') or '')[:45]}")
+            if item.get("reason"):
+                print(f"    {item['reason'][:160]}")
+        return 0
+    print(T(f"vigiando {conta['address']} a cada {args.interval or watch.settings(conta)['interval']}s",
+            f"watching {conta['address']} every {args.interval or watch.settings(conta)['interval']}s"))
+    watch.run(conta, interval=args.interval)
+    return 0
+
+
+def cmd_memory(args) -> int:
+    if args.add:
+        rotulo, valor = args.add[0], " ".join(args.add[1:])
+        if not valor:
+            return _fail(T("faltou o valor", "missing the value"))
+        fato = memory.remember(rotulo, valor, category=args.category or "outro",
+                               source=T("digitado", "typed by hand"),
+                               sensitive=args.sensitive)
+        print(T("guardei: ", "learned: ") + f"{fato['label']} = {fato['value']}")
+        return 0
+    if args.forget:
+        ok = memory.forget(args.forget)
+        print(T("esqueci", "forgotten") if ok else T("não achei", "not found"))
+        return 0 if ok else 1
+    if args.notes is not None:
+        memory.set_notes(args.notes)
+        print(T("observações salvas", "notes saved"))
+        return 0
+    itens = memory.facts(args.category)
+    if args.json:
+        _out({"facts": itens, "notes": memory.load().get("notes", "")}, True)
+        return 0
+    if not itens:
+        print(T("ainda não aprendi nada", "nothing learned yet"))
+    for fato in itens:
+        marca = " *" if fato.get("sensitive") else ""
+        print(f"{fato['label']}{marca}: {fato['value']}")
+        print(f"    [{fato['category']}] {fato.get('source') or ''} — {fato['updated'][:10]}")
+    observacoes = memory.load().get("notes")
+    if observacoes:
+        print(T("\nObservações:\n", "\nNotes:\n") + observacoes)
+    return 0
+
+
+def cmd_brain(args) -> int:
+    cfg = config.load()
+    nome = args.account or cfg.get("default_account")
+    if not nome or nome not in cfg.get("accounts", {}):
+        return _fail(T("conta não encontrada", "mailbox not found"))
+    conta = cfg["accounts"][nome]
+    if args.backend or args.model:
+        miolo = conta.setdefault("brain", {})
+        if args.backend:
+            miolo["backend"] = args.backend
+        if args.model:
+            miolo["model"] = args.model
+        config.save(cfg)
+    atual = conta.get("brain") or {}
+    dados = {"backend": atual.get("backend") or brain.DEFAULT_BACKEND,
+             "model": atual.get("model"), "available": list(brain.BACKENDS)}
+    _out(dados, True) if args.json else print(
+        T("cérebro: ", "brain: ") + dados["backend"] + (f" ({dados['model']})" if dados["model"] else ""))
+    return 0
+
+
+def cmd_scope(args) -> int:
+    cfg = config.load()
+    nome = args.account or cfg.get("default_account")
+    if not nome or nome not in cfg.get("accounts", {}):
+        return _fail(T("conta não encontrada", "mailbox not found"))
+    conta = cfg["accounts"][nome]
+    vigia = conta.setdefault("watch", dict(watch.DEFAULT_WATCH))
+    for campo, valor in (("scope", args.scope), ("interval", args.interval),
+                         ("min_confidence", args.min_confidence)):
+        if valor is not None:
+            vigia[campo] = valor
+    if args.enable is not None:
+        vigia["enabled"] = args.enable
+    config.save(cfg)
+    atual = watch.settings(config.get_account(nome))
+    if args.json:
+        _out(atual, True)
+        return 0
+    print(T("escopo: ", "scope: ") + atual["scope"] + (
+        T("  (só o que é endereçado ao agente)", "  (only mail addressed to the agent)")
+        if atual["scope"] == "alias" else T("  (a caixa inteira)", "  (the whole mailbox)")))
+    print(T("intervalo: ", "interval: ") + f"{atual['interval']}s   "
+          + T("confiança mínima: ", "min confidence: ") + f"{atual['min_confidence']}")
     return 0
 
 
@@ -626,8 +749,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--imap-host")
     p.add_argument("--identity", choices=list(identity.MODES))
     p.add_argument("--owner-name")
+    p.add_argument("--no-prompt", action="store_true",
+                   help="não perguntar nada; é como o app configura a conta")
 
     p = add("secret", cmd_secret, "gravar/trocar a senha da conta no chaveiro")
+    p.add_argument("name", nargs="?", help="conta (o mesmo que --account)")
     p.add_argument("--stdin", action="store_true",
                    help="ler a senha da entrada padrão (ex.: pbpaste | mailforai secret conta --stdin)")
     add("accounts", cmd_accounts, "listar as contas configuradas")
@@ -735,6 +861,28 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("lang", cmd_lang, "idioma do CLI (pt | en)")
     p.add_argument("code", nargs="?", choices=["pt", "en"])
     p.add_argument("--system", action="store_true", help="voltar a seguir o sistema")
+
+    p = add("watch", cmd_watch, "ler a caixa e agir sozinho")
+    p.add_argument("--once", action="store_true", help="uma passada e sai")
+    p.add_argument("--dry-run", action="store_true", help="decide mas não age")
+    p.add_argument("--interval", type=int, help="segundos entre varreduras")
+
+    p = add("memory", cmd_memory, "o que o agente sabe sobre você")
+    p.add_argument("--add", nargs="+", metavar=("RÓTULO", "VALOR"))
+    p.add_argument("--forget", metavar="CHAVE")
+    p.add_argument("--notes", help="texto livre que entra em todo pedido ao modelo")
+    p.add_argument("--category", choices=list(memory.CATEGORIES))
+    p.add_argument("--sensitive", action="store_true")
+
+    p = add("brain", cmd_brain, "qual modelo lê e responde")
+    p.add_argument("backend", nargs="?", choices=list(brain.BACKENDS))
+    p.add_argument("--model")
+
+    p = add("scope", cmd_scope, "o que o agente pode ler na caixa")
+    p.add_argument("scope", nargs="?", choices=["alias", "all"])
+    p.add_argument("--interval", type=int)
+    p.add_argument("--min-confidence", type=float)
+    p.add_argument("--enable", action="store_true", default=None)
 
     p = add("hook", cmd_hook, "lembrar no Claude Code, em qualquer projeto, o que está parado")
     p.add_argument("--remove", action="store_true", help="desinstalar o lembrete")

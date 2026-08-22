@@ -1,20 +1,33 @@
 import Foundation
 import SwiftUI
 
-/// Estado do app. Lê a fila pelo próprio CLI e age chamando os mesmos comandos
-/// que uma pessoa digitaria — assim app e terminal nunca discordam sobre o que
-/// aconteceu, e o registro sai igual nos dois caminhos.
+enum Secao: String, CaseIterable, Identifiable {
+    case entrada, fila, enviados, memoria, ajustes
+    var id: String { rawValue }
+}
+
+/// Estado do app. Lê e age pelo próprio CLI, chamando os mesmos comandos que
+/// uma pessoa digitaria — assim app e terminal nunca discordam sobre o que
+/// aconteceu, e o registro sai igual pelos dois caminhos.
 @MainActor
 final class Store: ObservableObject {
     /// Um estado só para o app inteiro: a janela e o painel da barra mostram a
     /// mesma fila, e um refresh serve aos dois.
     static let shared = Store()
 
+    @Published var secao: Secao = .fila
     @Published var emails: [PendingEmail] = []
     @Published var questions: [Question] = []
+    @Published var inbox: [InboxMessage] = []
+    @Published var sent: [SentItem] = []
+    @Published var facts: [Fact] = []
+    @Published var notes: String = ""
+    @Published var watchLog: [WatchEntry] = []
     @Published var mailbox = MailboxSummary()
     @Published var errorText: String?
+    @Published var statusText: String?
     @Published var busy = false
+    @Published var carregandoEntrada = false
 
     private var timer: Timer?
 
@@ -40,7 +53,7 @@ final class Store: ObservableObject {
     func start() {
         guard timer == nil else { return }
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
     }
@@ -52,46 +65,116 @@ final class Store: ObservableObject {
 
     // MARK: - leitura
 
+    /// O que é barato e vale reler sempre: fila, conta, memória, histórico.
+    /// A caixa de entrada fica de fora — ela é uma ida à rede, e só recarrega
+    /// quando o usuário está olhando para ela ou pede.
     func refresh() {
-        guard !busy else { return }
-        guard let cli = Store.cliPath() else {
-            errorText = S.cliMissing
+        guard !busy, let cli = Store.cliPath() else {
+            if Store.cliPath() == nil { errorText = S.cliMissing }
             return
         }
         Task.detached(priority: .utility) {
             let pending = Self.run(cli, ["pending", "--json"])
             let accounts = Self.run(cli, ["accounts", "--json"])
+            let mem = Self.run(cli, ["memory", "--json"])
+            let hist = Self.run(cli, ["history", "--json", "-n", "60"])
             await MainActor.run {
-                self.apply(pendingJSON: pending.out, accountsJSON: accounts.out,
-                           failure: pending.status == 0 ? nil : pending.err)
+                self.aplicar(pending: pending, accounts: accounts, memory: mem, history: hist)
             }
         }
     }
 
-    private func apply(pendingJSON: String, accountsJSON: String, failure: String?) {
-        if let failure, !failure.isEmpty {
+    private func aplicar(pending: Saida, accounts: Saida, memory: Saida, history: Saida) {
+        if pending.status != 0, !pending.err.isEmpty {
             // sem caixa configurada não é erro do app: é o primeiro uso
-            errorText = failure.contains("setup") ? S.noMailbox : failure
+            errorText = pending.err.contains("setup") ? nil : pending.err
+            mailbox.configured = false
             emails = []; questions = []
             return
         }
         errorText = nil
-        if let data = pendingJSON.data(using: .utf8),
-           let payload = try? JSONDecoder().decode(PendingPayload.self, from: data) {
-            emails = payload.pending.filter { ($0.status ?? "pending") == "pending" }
-            questions = payload.questions.filter { ($0.status ?? "open") == "open" }
+        if let dados = pending.out.data(using: .utf8),
+           let carga = try? JSONDecoder().decode(PendingPayload.self, from: dados) {
+            emails = carga.pending.filter { ($0.status ?? "pending") == "pending" }
+            questions = carga.questions.filter { ($0.status ?? "open") == "open" }
         }
-        if let data = accountsJSON.data(using: .utf8),
-           let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let accounts = root["accounts"] as? [String: Any],
-           let name = root["default"] as? String,
-           let account = accounts[name] as? [String: Any] {
-            var resumo = MailboxSummary()
-            resumo.name = name
-            resumo.address = account["address"] as? String ?? ""
-            resumo.mode = (account["approval"] as? [String: Any])?["mode"] as? String ?? "confirm"
-            resumo.identity = (account["identity"] as? [String: Any])?["mode"] as? String ?? "ia"
-            mailbox = resumo
+        if let dados = memory.out.data(using: .utf8),
+           let carga = try? JSONDecoder().decode(MemoryPayload.self, from: dados) {
+            facts = carga.facts
+            if notes != carga.notes ?? "" { notes = carga.notes ?? "" }
+        }
+        if let dados = history.out.data(using: .utf8),
+           let itens = try? JSONDecoder().decode([SentItem].self, from: dados) {
+            sent = itens
+        }
+        aplicarConta(accounts.out)
+    }
+
+    private func aplicarConta(_ json: String) {
+        guard let dados = json.data(using: .utf8),
+              let raiz = try? JSONSerialization.jsonObject(with: dados) as? [String: Any],
+              let contas = raiz["accounts"] as? [String: Any],
+              let nome = raiz["default"] as? String,
+              let conta = contas[nome] as? [String: Any] else {
+            mailbox.configured = false
+            return
+        }
+        var resumo = MailboxSummary()
+        resumo.name = nome
+        resumo.configured = true
+        resumo.address = conta["address"] as? String ?? ""
+        resumo.username = conta["username"] as? String ?? ""
+        resumo.provider = conta["provider"] as? String ?? ""
+        resumo.mode = (conta["approval"] as? [String: Any])?["mode"] as? String ?? "confirm"
+        let ident = conta["identity"] as? [String: Any]
+        resumo.identity = ident?["mode"] as? String ?? "ia"
+        resumo.ownerName = ident?["owner_name"] as? String ?? ""
+        let vigia = conta["watch"] as? [String: Any]
+        resumo.scope = vigia?["scope"] as? String ?? "alias"
+        resumo.brain = (conta["brain"] as? [String: Any])?["backend"] as? String ?? "claude-cli"
+        let guarda = conta["guard"] as? [String: Any]
+        resumo.dailyLimit = guarda?["daily_limit"] as? Int ?? 25
+        resumo.allowlist = guarda?["allowlist"] as? [String] ?? []
+        resumo.hasSecret = mailbox.hasSecret || resumo.hasSecret
+        mailbox = resumo
+    }
+
+    func carregarEntrada(force: Bool = false) {
+        guard let cli = Store.cliPath(), !carregandoEntrada else { return }
+        guard force || inbox.isEmpty else { return }
+        carregandoEntrada = true
+        Task.detached(priority: .userInitiated) {
+            let resultado = Self.run(cli, ["inbox", "--json", "-n", "25"])
+            let vigia = Self.run(cli, ["watch", "--json", "--dry-run"])
+            await MainActor.run {
+                self.carregandoEntrada = false
+                if resultado.status == 0, let dados = resultado.out.data(using: .utf8),
+                   let itens = try? JSONDecoder().decode([InboxMessage].self, from: dados) {
+                    self.inbox = itens
+                    self.errorText = nil
+                } else if !resultado.err.isEmpty {
+                    self.errorText = resultado.err
+                }
+                if let dados = vigia.out.data(using: .utf8),
+                   let itens = try? JSONDecoder().decode([WatchEntry].self, from: dados) {
+                    self.watchLog = itens
+                }
+            }
+        }
+    }
+
+    func corpo(de mensagem: InboxMessage, completo: @escaping (String) -> Void) {
+        guard let cli = Store.cliPath() else { return }
+        Task.detached(priority: .userInitiated) {
+            let r = Self.run(cli, ["read", mensagem.uid, "--json", "--keep-unread"])
+            let texto: String
+            if let dados = r.out.data(using: .utf8),
+               let obj = try? JSONSerialization.jsonObject(with: dados) as? [String: Any] {
+                texto = obj["body"] as? String ?? ""
+            } else {
+                texto = r.err
+            }
+            await MainActor.run { completo(texto) }
         }
     }
 
@@ -112,6 +195,49 @@ final class Store: ObservableObject {
     }
 
     func setMode(_ mode: String) { act(["mode", mode]) }
+    func setScope(_ scope: String) { act(["scope", scope]) }
+    func setBrain(_ backend: String) { act(["brain", backend]) }
+    func setIdentity(_ mode: String) { act(["identity", mode]) }
+
+    func esquecer(_ fato: Fact) { act(["memory", "--forget", fato.key]) }
+
+    func lembrar(rotulo: String, valor: String, categoria: String) {
+        guard !rotulo.isEmpty, !valor.isEmpty else { return }
+        act(["memory", "--add", rotulo, valor, "--category", categoria])
+    }
+
+    func salvarNotas(_ texto: String) { act(["memory", "--notes", texto]) }
+
+    func enviar(para: String, assunto: String, corpo: String, completo: @escaping (String) -> Void) {
+        guard let cli = Store.cliPath() else { return }
+        busy = true
+        Task.detached(priority: .userInitiated) {
+            let r = Self.run(cli, ["send", "-t", para, "-s", assunto, "-b", corpo,
+                                   "--agent", "app", "--reason", S.writtenInApp])
+            await MainActor.run {
+                self.busy = false
+                completo(r.status == 0 ? r.out.trimmingCharacters(in: .whitespacesAndNewlines)
+                                       : r.err.trimmingCharacters(in: .whitespacesAndNewlines))
+                self.refresh()
+            }
+        }
+    }
+
+    /// Uma varredura agora: lê o que chegou e deixa o agente agir.
+    func varrerAgora() {
+        guard let cli = Store.cliPath() else { return }
+        busy = true
+        statusText = S.checking
+        Task.detached(priority: .userInitiated) {
+            let r = Self.run(cli, ["watch", "--once", "--json"])
+            await MainActor.run {
+                self.busy = false
+                self.statusText = r.status == 0 ? nil : r.err
+                self.carregarEntrada(force: true)
+                self.refresh()
+            }
+        }
+    }
 
     func openHistory() {
         guard let cli = Store.cliPath() else { return }
@@ -137,17 +263,26 @@ final class Store: ObservableObject {
 
     // MARK: - processo
 
-    nonisolated static func run(_ cli: String, _ args: [String]) -> (out: String, err: String, status: Int32) {
+    typealias Saida = (out: String, err: String, status: Int32)
+
+    nonisolated static func run(_ cli: String, _ args: [String], stdin: String? = nil) -> Saida {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: cli)
         process.arguments = args
         let out = Pipe(), err = Pipe()
         process.standardOutput = out
         process.standardError = err
+        if stdin != nil {
+            process.standardInput = Pipe()
+        }
         do {
             try process.run()
         } catch {
             return ("", error.localizedDescription, 1)
+        }
+        if let stdin, let entrada = process.standardInput as? Pipe {
+            entrada.fileHandleForWriting.write(Data(stdin.utf8))
+            entrada.fileHandleForWriting.closeFile()
         }
         let saida = out.fileHandleForReading.readDataToEndOfFile()
         let erro = err.fileHandleForReading.readDataToEndOfFile()

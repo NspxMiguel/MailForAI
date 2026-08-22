@@ -79,6 +79,7 @@ def send(
     dry_run: bool = False,
     reason: Optional[str] = None,
     _skip_queue: bool = False,
+    _force_queue: bool = False,
 ) -> Dict[str, Any]:
     """Aplica a política, envia, e grava o resultado no histórico dos dois jeitos.
 
@@ -100,7 +101,8 @@ def send(
                        error=str(exc), agent=agent)
         raise
 
-    if approval.mode(account) == "confirm" and not _skip_queue and not dry_run:
+    fila = approval.mode(account) == "confirm" or _force_queue
+    if fila and not _skip_queue and not dry_run:
         pedido = approval.queue_send(account, to, subject, body, cc=cc, bcc=bcc,
                                      attachments=attachments, in_reply_to=in_reply_to,
                                      agent=agent, reason=reason)
