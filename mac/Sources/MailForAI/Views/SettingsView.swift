@@ -59,6 +59,12 @@ struct SettingsView: View {
     /// sozinha" some no primeiro dia em que ninguém abre o app.
     private var automatico: some View {
         bloco(S.settingsAuto) {
+            Toggle(S.serviceOn, isOn: Binding(
+                get: { store.servicoLigado },
+                set: { store.ligarServico($0) }))
+            Text(S.serviceHelp).font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
             Toggle(S.autoWatch, isOn: Binding(
                 get: { store.vigiaLigado },
                 set: { store.ligarVigia($0) }))

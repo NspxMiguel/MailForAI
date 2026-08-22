@@ -33,6 +33,7 @@ final class Store: ObservableObject {
     @Published var vigiaIntervalo = 300
     @Published var hookInstalado = false
     @Published var ligadoAoClaude = false
+    @Published var servicoLigado = false
     @Published var ultimaVarredura: Date?
 
     private var timer: Timer?
@@ -61,7 +62,9 @@ final class Store: ObservableObject {
         guard timer == nil else { return }
         refresh()
         conferirIntegracoes()
-        timer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
+        // 10s é curto o bastante para a fila parecer viva e longo o bastante
+        // para não ficar subindo processo o tempo todo
+        timer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
     }
@@ -110,6 +113,10 @@ final class Store: ObservableObject {
                 self.refresh()
             }
         }
+    }
+
+    func ligarServico(_ ligar: Bool) {
+        act(ligar ? ["service"] : ["service", "--remove"])
     }
 
     func instalarHook(_ ligar: Bool) {
@@ -165,49 +172,59 @@ final class Store: ObservableObject {
 
     // MARK: - leitura
 
-    /// O que é barato e vale reler sempre: fila, conta, memória, histórico.
-    /// A caixa de entrada fica de fora — ela é uma ida à rede, e só recarrega
-    /// quando o usuário está olhando para ela ou pede.
+    /// Um comando só, que lê arquivos locais. A caixa de entrada fica de fora:
+    /// ela é ida à rede, e só recarrega quando o usuário pede.
+    ///
+    /// Antes eram quatro processos a cada poucos segundos — quatro
+    /// interpretadores subindo o tempo todo, e a janela pesava por isso.
     func refresh() {
         guard !busy, let cli = Store.cliPath() else {
             if Store.cliPath() == nil { errorText = S.cliMissing }
             return
         }
         Task.detached(priority: .utility) {
-            let pending = Self.run(cli, ["pending", "--json"])
-            let accounts = Self.run(cli, ["accounts", "--json"])
-            let mem = Self.run(cli, ["memory", "--json"])
-            let hist = Self.run(cli, ["history", "--json", "-n", "60"])
-            await MainActor.run {
-                self.aplicar(pending: pending, accounts: accounts, memory: mem, history: hist)
-            }
+            let estado = Self.run(cli, ["state", "--json"])
+            await MainActor.run { self.aplicar(estado) }
         }
     }
 
-    private func aplicar(pending: Saida, accounts: Saida, memory: Saida, history: Saida) {
-        if pending.status != 0, !pending.err.isEmpty {
-            // sem caixa configurada não é erro do app: é o primeiro uso
-            errorText = pending.err.contains("setup") ? nil : pending.err
-            mailbox.configured = false
-            emails = []; questions = []
+    private func aplicar(_ estado: Saida) {
+        guard estado.status == 0, let dados = estado.out.data(using: .utf8) else {
+            if !estado.err.isEmpty { errorText = estado.err }
             return
         }
         errorText = nil
-        if let dados = pending.out.data(using: .utf8),
-           let carga = try? JSONDecoder().decode(PendingPayload.self, from: dados) {
-            emails = carga.pending.filter { ($0.status ?? "pending") == "pending" }
-            questions = carga.questions.filter { ($0.status ?? "open") == "open" }
+        let decodificador = JSONDecoder()
+        guard let raiz = try? JSONSerialization.jsonObject(with: dados) as? [String: Any] else {
+            return
         }
-        if let dados = memory.out.data(using: .utf8),
-           let carga = try? JSONDecoder().decode(MemoryPayload.self, from: dados) {
+
+        func recodificar<T: Decodable>(_ chave: String, _ tipo: T.Type) -> T? {
+            guard let parte = raiz[chave],
+                  let cru = try? JSONSerialization.data(withJSONObject: parte) else { return nil }
+            return try? decodificador.decode(tipo, from: cru)
+        }
+
+        if let itens = recodificar("pending", [PendingEmail].self) {
+            emails = itens.filter { ($0.status ?? "pending") == "pending" }
+        }
+        if let itens = recodificar("questions", [Question].self) {
+            questions = itens.filter { ($0.status ?? "open") == "open" }
+        }
+        if let carga = recodificar("memory", MemoryPayload.self) {
             facts = carga.facts
-            if notes != carga.notes ?? "" { notes = carga.notes ?? "" }
+            if notes != (carga.notes ?? "") { notes = carga.notes ?? "" }
         }
-        if let dados = history.out.data(using: .utf8),
-           let itens = try? JSONDecoder().decode([SentItem].self, from: dados) {
-            sent = itens
+        if let itens = recodificar("history", [SentItem].self) { sent = itens }
+        if let itens = recodificar("watch_log", [WatchEntry].self) { watchLog = itens }
+        if let servico = raiz["service"] as? [String: Any] {
+            servicoLigado = (servico["running"] as? Bool ?? false)
+                || (servico["installed"] as? Bool ?? false)
         }
-        aplicarConta(accounts.out)
+        if let contas = raiz["accounts"],
+           let cru = try? JSONSerialization.data(withJSONObject: contas) {
+            aplicarConta(String(data: cru, encoding: .utf8) ?? "")
+        }
     }
 
     private func aplicarConta(_ json: String) {
@@ -252,8 +269,10 @@ final class Store: ObservableObject {
         guard force || inbox.isEmpty else { return }
         carregandoEntrada = true
         Task.detached(priority: .userInitiated) {
+            // só a listagem: o que o agente decidiu vem do registro, junto do
+            // resto do estado. Rodar o vigia aqui chamava o modelo para cada
+            // mensagem toda vez que a aba abria — era o que travava a janela.
             let resultado = Self.run(cli, ["inbox", "--json", "-n", "25"])
-            let vigia = Self.run(cli, ["watch", "--json", "--dry-run"])
             await MainActor.run {
                 self.carregandoEntrada = false
                 if resultado.status == 0, let dados = resultado.out.data(using: .utf8),
@@ -262,10 +281,6 @@ final class Store: ObservableObject {
                     self.errorText = nil
                 } else if !resultado.err.isEmpty {
                     self.errorText = resultado.err
-                }
-                if let dados = vigia.out.data(using: .utf8),
-                   let itens = try? JSONDecoder().decode([WatchEntry].self, from: dados) {
-                    self.watchLog = itens
                 }
             }
         }

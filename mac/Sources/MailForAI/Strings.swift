@@ -129,14 +129,24 @@ struct S {
           "Everything you can change without opening a terminal.")
     }
     static var settingsAuto: String { t("Automático", "Automatic") }
+    static var serviceOn: String {
+        t("Funcionar 24h, mesmo com o app fechado",
+          "Run around the clock, even with the app closed")
+    }
+    static var serviceHelp: String {
+        t("Instala um serviço do sistema que lê a caixa sozinho, sobe quando o Mac liga e volta "
+          + "se cair. É isto que faz o agente trabalhar sem você por perto.",
+          "Installs a system service that reads the mailbox on its own, starts with the Mac and "
+          + "comes back if it dies. This is what makes the agent work without you around.")
+    }
     static var autoWatch: String {
         t("Ler a caixa e agir sozinho", "Read the mailbox and act on its own")
     }
     static var autoWatchHelp: String {
-        t("Só roda com o app aberto — ele fica na barra de menus. Cada mensagem vira uma "
-          + "resposta, uma pergunta pra você, ou nada.",
-          "Only runs while the app is open — it lives in the menu bar. Each message becomes a "
-          + "reply, a question for you, or nothing.")
+        t("Verificação extra enquanto a janela está aberta. Com o serviço acima ligado, isto é "
+          + "só para ver o resultado na hora.",
+          "Extra checking while the window is open. With the service above on, this is only to "
+          + "see results right away.")
     }
     static var autoEvery: String { t("Verificar a cada", "Check every") }
     static var every1min: String { t("1 minuto", "1 minute") }

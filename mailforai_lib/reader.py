@@ -89,6 +89,7 @@ def _summarize(uid: str, msg: email.message.Message, flags: str = "") -> Dict[st
         "uid": uid,
         "from": _decode(msg.get("From")),
         "to": _decode(msg.get("To")),
+        "cc": _decode(msg.get("Cc")),
         "subject": _decode(msg.get("Subject")),
         "date": iso,
         "message_id": (msg.get("Message-ID") or "").strip(),

@@ -12,7 +12,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from . import approval, brain, mailer, memory, notify, reader
+from . import approval, brain, guardrails, mailer, memory, notify, reader
 from .paths import HOME, ensure_home
 
 SEEN_FILE = HOME / "processed.jsonl"
@@ -84,16 +84,30 @@ def _in_scope(msg: Dict[str, Any], account: Dict[str, Any], scope: str) -> bool:
     return endereco in campos.lower()
 
 
-def scan_once(account: Dict[str, Any], limit: int = 20,
+def scan_once(account: Dict[str, Any], limit: int = 40,
               dry_run: bool = False) -> List[Dict[str, Any]]:
-    """Uma passada: lê o que chegou, decide, e age. Devolve o que fez."""
+    """Uma passada: lê o que chegou, decide, e age. Devolve o que fez.
+
+    A varredura NÃO se guia por "não lida". O dono abre a mensagem no celular
+    e ela vira lida — e o agente nunca mais a veria. Quem diz o que já foi
+    tratado é o registro em processed.jsonl, que é do agente e de mais ninguém.
+    """
     opcoes = settings(account)
     vistos = _seen_ids()
     resultados = []
 
-    mensagens = reader.inbox(account, limit=limit, unread_only=True)
+    mensagens = reader.inbox(account, limit=limit, unread_only=False)
     for resumo in mensagens:
         if resumo.get("message_id") in vistos:
+            continue
+        from .guardrails import endereco as _endereco
+        if _endereco(resumo.get("from", "")) == _endereco(account["address"]):
+            resultados.append(_record({
+                "message_id": resumo.get("message_id"), "uid": resumo["uid"],
+                "from": resumo["from"], "subject": resumo["subject"],
+                "action": "ignore",
+                "reason": "mensagem enviada pelo próprio agente",
+            }))
             continue
         if not _in_scope(resumo, account, opcoes["scope"]):
             resultados.append(_record({
@@ -107,6 +121,12 @@ def scan_once(account: Dict[str, Any], limit: int = 20,
         # o corpo só é lido depois do filtro de escopo, e sem marcar como lida:
         # o dono continua vendo como não lida no cliente dele
         completa = reader.read(account, resumo["uid"], mark_read=False)
+
+        # a mensagem é examinada antes de chegar ao modelo: o que parece
+        # instrução disfarçada nunca vira resposta automática
+        suspeitas = guardrails.detectar_injecao(
+            (completa.get("body") or "") + " " + (completa.get("subject") or ""))
+
         try:
             decisao = brain.decide(account, completa)
         except brain.BrainError as exc:
@@ -116,7 +136,20 @@ def scan_once(account: Dict[str, Any], limit: int = 20,
                 "action": "error", "reason": str(exc)[:300]}))
             continue
 
-        for fato in decisao.get("learned") or []:
+        if suspeitas:
+            decisao = {**decisao, "action": "escalate",
+                       "reason": ("Esta mensagem traz texto que tenta dar ordens ao agente. "
+                                  "Não respondi nada. Trechos: " + " | ".join(suspeitas[:2])),
+                       "injection": suspeitas,
+                       # o que a IA teria feito fica registrado, para o dono ver
+                       "blocked_action": decisao.get("action"),
+                       "blocked_body": decisao.get("reply_body")}
+        else:
+            decisao, avisos = guardrails.conferir_decisao(decisao, completa, account)
+            if avisos:
+                decisao["injection"] = avisos
+
+        for fato in (decisao.get("learned") or []) if not decisao.get("injection") else []:
             rotulo, valor = fato.get("label"), fato.get("value")
             if rotulo and valor:
                 memory.remember(rotulo, valor, category=fato.get("category") or "outro",
@@ -128,6 +161,8 @@ def scan_once(account: Dict[str, Any], limit: int = 20,
             "action": decisao["action"], "reason": decisao.get("reason"),
             "confidence": decisao.get("confidence"), "backend": decisao.get("backend"),
             "learned": [f.get("label") for f in (decisao.get("learned") or [])],
+            "injection": decisao.get("injection"),
+            "blocked_action": decisao.get("blocked_action"),
         }
         if dry_run:
             entrada["dry_run"] = True
@@ -157,9 +192,11 @@ def scan_once(account: Dict[str, Any], limit: int = 20,
             notify.pending_question(pergunta)
             entrada["question_id"] = pergunta["id"]
         elif decisao["action"] == "escalate":
+            titulo = (f"⚠︎ Mensagem suspeita de {resumo['from']}: {resumo['subject']}"
+                      if decisao.get("injection")
+                      else f"Olha esta mensagem de {resumo['from']}: {resumo['subject']}")
             pergunta = approval.ask(
-                account["name"],
-                f"Olha esta mensagem de {resumo['from']}: {resumo['subject']}",
+                account["name"], titulo,
                 context=(decisao.get("reason") or "") + "\n\n" + (completa.get("body") or "")[:1200],
                 options=["eu cuido disso", "responda você"],
                 agent="mailforai-watch")

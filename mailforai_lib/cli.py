@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 from . import (__version__, approval, brain, config, crypto, diagnose, guard, history,
-               identity, keyring, mailer, memory, notify, providers, reader, watch)
+               identity, keyring, mailer, memory, notify, providers, reader,
+               service, watch)
 from .i18n import T, language, set_language
 from .paths import CONFIG_FILE, HISTORY_FILE, ensure_home
 
@@ -235,6 +236,13 @@ def cmd_inbox(args) -> int:
                                 mailbox=args.mailbox)
     except (reader.ReadError, keyring.KeyringError) as exc:
         return _fail(str(exc))
+    # o escopo vale para a listagem também: numa caixa compartilhada, mostrar
+    # tudo já entrega a correspondência do dono para quem olha o app
+    escopo = watch.settings(account)["scope"]
+    if escopo == "alias" and not args.all:
+        messages = [m for m in messages
+                    if account["address"].lower() in
+                    ((m.get("to") or "") + " " + (m.get("cc") or "")).lower()]
     if args.json:
         _out(messages, True)
         return 0
@@ -759,6 +767,58 @@ def cmd_hook(args) -> int:
     return 0
 
 
+def cmd_state(args) -> int:
+    """Tudo que a interface precisa, numa chamada só.
+
+    O app pedia fila, conta, memória e histórico em quatro processos separados,
+    a cada poucos segundos. Quatro interpretadores subindo o tempo todo é o que
+    deixava a janela pesada.
+    """
+    cfg = config.load()
+    nome = args.account or cfg.get("default_account")
+    conta_bruta = (cfg.get("accounts") or {}).get(nome) if nome else None
+
+    dados = {
+        "accounts": {"default": cfg.get("default_account"), "accounts": cfg.get("accounts", {})},
+        "pending": approval.outbox(status="pending", limit=30),
+        "questions": approval.questions(status="open"),
+        "memory": {"facts": memory.facts(), "notes": memory.load().get("notes", "")},
+        "history": history.read_all(account=nome, limit=40),
+        "watch_log": watch.processed(limit=40),
+        "service": service.status(),
+    }
+    if conta_bruta:
+        conta = config.get_account(nome)
+        dados["watch"] = watch.settings(conta)
+        dados["has_secret"] = keyring.has_secret(nome)
+    _out(dados, True)
+    return 0
+
+
+def cmd_service(args) -> int:
+    """Liga o vigia como serviço do sistema: funciona com o app fechado."""
+    if args.remove:
+        dados = service.desinstalar()
+    elif args.status:
+        dados = service.status()
+    else:
+        conta = config.get_account(args.account)
+        dados = service.instalar(intervalo=args.interval or watch.settings(conta)["interval"],
+                                 conta=conta["name"])
+    if args.json:
+        _out(dados, True)
+        return 0 if dados.get("ok", True) else 1
+    if dados.get("error"):
+        return _fail(dados["error"])
+    estado = (T("ligado", "on") if dados.get("running") else
+              (T("instalado, subindo…", "installed, starting…") if dados.get("installed")
+               else T("desligado", "off")))
+    print(T("serviço: ", "service: ") + estado)
+    if dados.get("installed"):
+        print(T("registro em ", "log at ") + dados["log"])
+    return 0
+
+
 def cmd_connect(args) -> int:
     """Liga a caixa ao Claude Code, para decidir a fila conversando."""
     import shutil
@@ -860,6 +920,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("inbox", cmd_inbox, "listar a caixa de entrada")
     p.add_argument("--limit", "-n", type=int, default=15)
     p.add_argument("--unread", action="store_true")
+    p.add_argument("--all", action="store_true",
+                   help="mostrar também o que não é endereçado ao agente")
     p.add_argument("--mailbox", default="INBOX")
 
     p = add("read", cmd_read, "ler uma mensagem pelo UID")
@@ -974,6 +1036,13 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("hook", cmd_hook, "lembrar no Claude Code, em qualquer projeto, o que está parado")
     p.add_argument("--remove", action="store_true", help="desinstalar o lembrete")
     p.add_argument("--status", action="store_true", help="dizer apenas se está instalado")
+
+    add("state", cmd_state, "estado inteiro em JSON (é o que o app lê)")
+
+    p = add("service", cmd_service, "rodar o vigia 24h, mesmo com o app fechado")
+    p.add_argument("--remove", action="store_true")
+    p.add_argument("--status", action="store_true")
+    p.add_argument("--interval", type=int)
 
     p = add("connect", cmd_connect, "ligar a caixa ao Claude Code")
     p.add_argument("--remove", action="store_true")
