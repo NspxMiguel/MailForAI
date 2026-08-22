@@ -128,6 +128,49 @@ struct S {
         t("Tudo que dá para mudar sem abrir o terminal.",
           "Everything you can change without opening a terminal.")
     }
+    static var settingsAuto: String { t("Automático", "Automatic") }
+    static var autoWatch: String {
+        t("Ler a caixa e agir sozinho", "Read the mailbox and act on its own")
+    }
+    static var autoWatchHelp: String {
+        t("Só roda com o app aberto — ele fica na barra de menus. Cada mensagem vira uma "
+          + "resposta, uma pergunta pra você, ou nada.",
+          "Only runs while the app is open — it lives in the menu bar. Each message becomes a "
+          + "reply, a question for you, or nothing.")
+    }
+    static var autoEvery: String { t("Verificar a cada", "Check every") }
+    static var every1min: String { t("1 minuto", "1 minute") }
+    static var every5min: String { t("5 minutos", "5 minutes") }
+    static var every15min: String { t("15 minutos", "15 minutes") }
+    static var every1hour: String { t("1 hora", "1 hour") }
+    static var lastCheck: String { t("Última verificação", "Last check") }
+    static var openAtLogin: String { t("Abrir quando eu ligar o Mac", "Open when I start my Mac") }
+    static var openAtLoginHelp: String {
+        t("Necessário para o agente ler a caixa sem você abrir nada.",
+          "Needed for the agent to read the mailbox without you opening anything.")
+    }
+    static var noCap: String { t("sem teto", "no cap") }
+    static var settingsIntegrations: String { t("Integrações", "Integrations") }
+    static var integrationHook: String {
+        t("Avisar no Claude Code quando algo estiver esperando",
+          "Remind me in Claude Code when something is waiting")
+    }
+    static var integrationHookHelp: String {
+        t("Uma linha no começo de cada conversa, em qualquer projeto, só quando há fila.",
+          "One line at the start of each session, in any project, only when the queue is not empty.")
+    }
+    static var integrationMCP: String {
+        t("Deixar o Claude Code decidir a fila por conversa",
+          "Let Claude Code clear the queue from a conversation")
+    }
+    static var integrationMCPHelp: String {
+        t("Aprovar, recusar e responder perguntas conversando, sem abrir o app.",
+          "Approve, reject and answer questions by chatting, without opening the app.")
+    }
+    static var reply: String { t("Responder", "Reply") }
+    static var sendReply: String { t("Enviar resposta", "Send reply") }
+    static var replyQueued: String { t("foi para a fila", "queued for approval") }
+    static var replySent: String { t("resposta enviada", "reply sent") }
     static var settingsAccount: String { t("Conta", "Account") }
     static var settingsSending: String { t("Envio", "Sending") }
     static var settingsReading: String { t("Leitura", "Reading") }
@@ -215,6 +258,15 @@ struct S {
     static var setupProviderHelp: String {
         t("Escolhido pelo domínio quando dá para adivinhar.",
           "Picked from the domain when it can be guessed.")
+    }
+    static var setupServers: String { t("Servidores", "Servers") }
+    static var setupServersHelp: String {
+        t("O host de envio (SMTP) e o de leitura (IMAP), com as portas.",
+          "The sending (SMTP) and reading (IMAP) hosts, with their ports.")
+    }
+    static var setupNoTLS: String {
+        t("Servidor sem criptografia (rede local ou teste)",
+          "Server without encryption (local network or testing)")
     }
     static var setupOwner: String { t("Seu nome", "Your name") }
     static var setupOwnerHelp: String {

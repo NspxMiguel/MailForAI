@@ -38,7 +38,10 @@ def _connect(account: Dict[str, Any]) -> imaplib.IMAP4:
             conn = imaplib.IMAP4_SSL(imap_cfg["host"], imap_cfg.get("port", 993))
         else:
             conn = imaplib.IMAP4(imap_cfg["host"], imap_cfg.get("port", 143))
-            conn.starttls()
+            # sem SSL, STARTTLS é o padrão certo — mas um servidor local de
+            # teste não tem TLS nenhum, e exigir derrubava a conexão
+            if imap_cfg.get("starttls", True):
+                conn.starttls()
         conn.login(account.get("username") or account["address"], password)
     except imaplib.IMAP4.error as exc:
         raise ReadError(f"IMAP recusou a conexão: {exc}") from exc

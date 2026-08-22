@@ -59,6 +59,9 @@ def cmd_setup(args) -> int:
 
     smtp_host = args.smtp_host
     imap_host = args.imap_host
+    if provider == "custom" and not smtp_host and args.no_prompt:
+        return _fail(T("o provedor 'custom' exige --smtp-host",
+                       "the 'custom' provider needs --smtp-host"))
     if provider == "custom" and not smtp_host:
         smtp_host = input("Host SMTP: ").strip()
         imap_host = input("Host IMAP: ").strip()
@@ -67,6 +70,7 @@ def cmd_setup(args) -> int:
     account = config.build_account(
         name=name, address=address, provider=provider, username=username,
         display_name=args.display_name, smtp_host=smtp_host, imap_host=imap_host,
+        smtp_port=args.smtp_port, imap_port=args.imap_port, no_tls=args.no_tls,
     )
     if not args.no_prompt:
         print(T("\nComo a IA se apresenta para quem recebe:",
@@ -135,11 +139,13 @@ def cmd_secret(args) -> int:
 def cmd_accounts(args) -> int:
     cfg = config.load()
     accounts = cfg.get("accounts", {})
-    if not accounts:
-        print(T("nenhuma conta — rode 'mailforai setup'", "no mailbox yet — run 'mailforai setup'"))
-        return 0
+    # o --json vem antes do caso vazio: o app lê esta saída e um texto solto
+    # no lugar do JSON o deixava sem saber se havia conta ou se algo quebrou
     if args.json:
         _out({"default": cfg.get("default_account"), "accounts": accounts}, True)
+        return 0
+    if not accounts:
+        print(T("nenhuma conta — rode 'mailforai setup'", "no mailbox yet — run 'mailforai setup'"))
         return 0
     for name, account in accounts.items():
         marca = T(" (padrão)", " (default)") if name == cfg.get("default_account") else ""
@@ -678,8 +684,8 @@ def cmd_scope(args) -> int:
                          ("min_confidence", args.min_confidence)):
         if valor is not None:
             vigia[campo] = valor
-    if args.enable is not None:
-        vigia["enabled"] = args.enable
+    if args.enable_watch is not None:
+        vigia["enabled"] = args.enable_watch.lower() in ("sim", "yes", "1", "true", "on")
     config.save(cfg)
     atual = watch.settings(config.get_account(nome))
     if args.json:
@@ -689,7 +695,9 @@ def cmd_scope(args) -> int:
         T("  (só o que é endereçado ao agente)", "  (only mail addressed to the agent)")
         if atual["scope"] == "alias" else T("  (a caixa inteira)", "  (the whole mailbox)")))
     print(T("intervalo: ", "interval: ") + f"{atual['interval']}s   "
-          + T("confiança mínima: ", "min confidence: ") + f"{atual['min_confidence']}")
+          + T("confiança mínima: ", "min confidence: ") + f"{atual['min_confidence']}   "
+          + T("automático: ", "automatic: ")
+          + (T("ligado", "on") if atual["enabled"] else T("desligado", "off")))
     return 0
 
 
@@ -697,6 +705,18 @@ def cmd_hook(args) -> int:
     """Instala (ou tira) o lembrete no Claude Code, valendo para todo projeto."""
     import os
     settings = Path(os.path.expanduser("~/.claude/settings.json"))
+    if args.status:
+        instalado = False
+        if settings.exists():
+            try:
+                dados = json.loads(settings.read_text(encoding="utf-8"))
+                instalado = "waiting_hook.py" in json.dumps(dados.get("hooks") or {})
+            except json.JSONDecodeError:
+                instalado = False
+        _out({"installed": instalado, "settings": str(settings)}, True) if args.json \
+            else print(T("instalado", "installed") if instalado
+                       else T("não instalado", "not installed"))
+        return 0
     script = Path(__file__).resolve().parent.parent / "hooks" / "waiting_hook.py"
     comando = f"python3 {script}"
 
@@ -739,6 +759,40 @@ def cmd_hook(args) -> int:
     return 0
 
 
+def cmd_connect(args) -> int:
+    """Liga a caixa ao Claude Code, para decidir a fila conversando."""
+    import shutil
+    import subprocess
+    binario = shutil.which("claude")
+    if not binario:
+        return _fail(T("o Claude Code não está instalado nesta máquina",
+                       "Claude Code is not installed on this machine"))
+    caminho = str(Path(__file__).resolve().parent.parent / "bin" / "mailforai")
+
+    if args.status:
+        listagem = subprocess.run([binario, "mcp", "list"], capture_output=True, timeout=30)
+        ligado = "mailforai" in listagem.stdout.decode()
+        _out({"connected": ligado}, True) if args.json else print(
+            T("ligado", "connected") if ligado else T("não ligado", "not connected"))
+        return 0
+
+    subprocess.run([binario, "mcp", "remove", "mailforai", "-s", "user"],
+                   capture_output=True, timeout=30)
+    if args.remove:
+        print(T("desligado do Claude Code", "disconnected from Claude Code"))
+        return 0
+
+    comando = [binario, "mcp", "add", "mailforai", "-s", "user", "--", caminho, "mcp"]
+    if not args.agent_only:
+        # com --owner o Claude Code também pode aprovar e recusar pela conversa
+        comando.append("--owner")
+    proc = subprocess.run(comando, capture_output=True, timeout=60)
+    if proc.returncode != 0:
+        return _fail(proc.stderr.decode()[:300])
+    print(T("ligado ao Claude Code", "connected to Claude Code"))
+    return 0
+
+
 def cmd_mcp(args) -> int:
     from .mcp_server import run
     run(owner=args.owner)
@@ -771,6 +825,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--display-name")
     p.add_argument("--smtp-host")
     p.add_argument("--imap-host")
+    p.add_argument("--smtp-port", type=int)
+    p.add_argument("--imap-port", type=int)
+    p.add_argument("--no-tls", action="store_true",
+                   help="servidor sem criptografia (rede local ou teste)")
     p.add_argument("--identity", choices=list(identity.MODES))
     p.add_argument("--owner-name")
     p.add_argument("--no-prompt", action="store_true",
@@ -910,10 +968,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("scope", nargs="?", choices=["alias", "all"])
     p.add_argument("--interval", type=int)
     p.add_argument("--min-confidence", type=float)
-    p.add_argument("--enable", action="store_true", default=None)
+    p.add_argument("--enable-watch", metavar="sim|nao",
+                   help="ligar ou desligar a leitura automática")
 
     p = add("hook", cmd_hook, "lembrar no Claude Code, em qualquer projeto, o que está parado")
     p.add_argument("--remove", action="store_true", help="desinstalar o lembrete")
+    p.add_argument("--status", action="store_true", help="dizer apenas se está instalado")
+
+    p = add("connect", cmd_connect, "ligar a caixa ao Claude Code")
+    p.add_argument("--remove", action="store_true")
+    p.add_argument("--status", action="store_true")
+    p.add_argument("--agent-only", action="store_true",
+                   help="sem as ferramentas de decisão (aprovar/recusar)")
 
     p = add("mcp", cmd_mcp, "rodar como servidor MCP (stdio) para a IA plugar")
     p.add_argument("--owner", action="store_true",

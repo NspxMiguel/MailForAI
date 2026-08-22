@@ -128,6 +128,9 @@ struct SetupWizardView: View {
     @State private var senha = ""
     @State private var smtpHost = ""
     @State private var imapHost = ""
+    @State private var smtpPorta = "587"
+    @State private var imapPorta = "993"
+    @State private var semTLS = false
     @State private var testando = false
     @State private var resultado: String?
     @State private var deuCerto = false
@@ -188,9 +191,24 @@ struct SetupWizardView: View {
                 .labelsHidden()
             }
             if provedorID == "custom" {
-                HStack {
-                    TextField("smtp.exemplo.com", text: $smtpHost).textFieldStyle(.roundedBorder)
-                    TextField("imap.exemplo.com", text: $imapHost).textFieldStyle(.roundedBorder)
+                campo(S.setupServers, S.setupServersHelp) {
+                    VStack(spacing: 6) {
+                        HStack {
+                            TextField("smtp.exemplo.com", text: $smtpHost)
+                                .textFieldStyle(.roundedBorder)
+                            TextField("587", text: $smtpPorta)
+                                .textFieldStyle(.roundedBorder).frame(width: 70)
+                        }
+                        HStack {
+                            TextField("imap.exemplo.com", text: $imapHost)
+                                .textFieldStyle(.roundedBorder)
+                            TextField("993", text: $imapPorta)
+                                .textFieldStyle(.roundedBorder).frame(width: 70)
+                        }
+                        Toggle(S.setupNoTLS, isOn: $semTLS)
+                            .font(.caption)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
             campo(S.setupOwner, S.setupOwnerHelp) {
@@ -209,7 +227,8 @@ struct SetupWizardView: View {
                     passo = 1
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!endereco.contains("@") || dono.isEmpty)
+                .disabled(!endereco.contains("@") || dono.isEmpty
+                          || (provedorID == "custom" && (smtpHost.isEmpty || imapHost.isEmpty)))
             }
         }
     }
@@ -313,7 +332,9 @@ struct SetupWizardView: View {
                     "--provider", provedorID, "--username", usuario,
                     "--display-name", apelido, "--owner-name", dono]
         if provedorID == "custom" {
-            args += ["--smtp-host", smtpHost, "--imap-host", imapHost]
+            args += ["--smtp-host", smtpHost, "--imap-host", imapHost,
+                     "--smtp-port", smtpPorta, "--imap-port", imapPorta]
+            if semTLS { args.append("--no-tls") }
         }
         let senhaDigitada = senha
         Task.detached(priority: .userInitiated) {

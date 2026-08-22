@@ -77,6 +77,7 @@ def build_account(
     smtp_port: Optional[int] = None,
     imap_host: Optional[str] = None,
     imap_port: Optional[int] = None,
+    no_tls: bool = False,
 ) -> Dict[str, Any]:
     preset = providers.PROVIDERS.get(provider)
     if preset is None:
@@ -91,6 +92,13 @@ def build_account(
         imap["host"] = imap_host
     if imap_port:
         imap["port"] = int(imap_port)
+    if no_tls:
+        # servidor sem criptografia: só faz sentido em rede local ou em teste,
+        # e é explícito justamente para não virar padrão por descuido
+        smtp["starttls"] = False
+        smtp["ssl"] = False
+        imap["ssl"] = False
+        imap["starttls"] = False
     if not smtp["host"]:
         raise ConfigError("o provedor 'custom' exige --smtp-host")
     return {

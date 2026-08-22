@@ -1,4 +1,5 @@
 import Foundation
+import ServiceManagement
 import SwiftUI
 
 enum Secao: String, CaseIterable, Identifiable {
@@ -28,8 +29,14 @@ final class Store: ObservableObject {
     @Published var statusText: String?
     @Published var busy = false
     @Published var carregandoEntrada = false
+    @Published var vigiaLigado = false
+    @Published var vigiaIntervalo = 300
+    @Published var hookInstalado = false
+    @Published var ligadoAoClaude = false
+    @Published var ultimaVarredura: Date?
 
     private var timer: Timer?
+    private var timerVigia: Timer?
 
     var waitingCount: Int { emails.count + questions.count }
 
@@ -53,6 +60,7 @@ final class Store: ObservableObject {
     func start() {
         guard timer == nil else { return }
         refresh()
+        conferirIntegracoes()
         timer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -61,6 +69,98 @@ final class Store: ObservableObject {
     func stop() {
         timer?.invalidate()
         timer = nil
+        timerVigia?.invalidate()
+        timerVigia = nil
+    }
+
+    /// O vigia é o que faz a caixa funcionar sem ninguém olhando: de tempos em
+    /// tempos lê o que chegou e deixa o agente decidir. Só roda com o app
+    /// aberto — é o mesmo trato de qualquer cliente de e-mail.
+    func aplicarVigia() {
+        timerVigia?.invalidate()
+        timerVigia = nil
+        guard vigiaLigado else { return }
+        let intervalo = Double(max(60, vigiaIntervalo))
+        timerVigia = Timer.scheduledTimer(withTimeInterval: intervalo, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.varrerAgora(silencioso: true) }
+        }
+        varrerAgora(silencioso: true)
+    }
+
+    func ligarVigia(_ ligado: Bool) {
+        vigiaLigado = ligado
+        act(["scope", "--enable-watch", ligado ? "sim" : "nao"])
+        aplicarVigia()
+    }
+
+    func mudarIntervalo(_ segundos: Int) {
+        vigiaIntervalo = segundos
+        act(["scope", "--interval", String(segundos)])
+        aplicarVigia()
+    }
+
+    func responder(uid: String, corpo: String, completo: @escaping (String) -> Void) {
+        guard let cli = Store.cliPath() else { return }
+        busy = true
+        Task.detached(priority: .userInitiated) {
+            let r = Self.run(cli, ["reply", uid, "--body", corpo, "--agent", "app", "--json"])
+            await MainActor.run {
+                self.busy = false
+                completo(r.status == 0 ? r.out : r.err)
+                self.refresh()
+            }
+        }
+    }
+
+    func instalarHook(_ ligar: Bool) {
+        act(ligar ? ["hook"] : ["hook", "--remove"])
+        conferirIntegracoes()
+    }
+
+    func conectarClaude(_ ligar: Bool) {
+        act(ligar ? ["connect"] : ["connect", "--remove"])
+        conferirIntegracoes()
+    }
+
+    /// Abrir junto com o Mac. Sem isto, "ler sozinho" depende de alguém lembrar
+    /// de abrir o app — que é justamente o que ninguém faz.
+    var abreNoLogin: Bool {
+        if #available(macOS 13.0, *) { return SMAppService.mainApp.status == .enabled }
+        return false
+    }
+
+    func definirAbrirNoLogin(_ ligar: Bool) {
+        guard #available(macOS 13.0, *) else { return }
+        do {
+            if ligar {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            objectWillChange.send()
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    func definirTeto(_ valor: Int) { act(["limit", String(valor)]) }
+
+    func conferirIntegracoes() {
+        guard let cli = Store.cliPath() else { return }
+        Task.detached(priority: .utility) {
+            let hook = Self.run(cli, ["hook", "--status", "--json"])
+            let mcp = Self.run(cli, ["connect", "--status", "--json"])
+            let lerBool = { (texto: String, chave: String) -> Bool in
+                guard let dados = texto.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: dados) as? [String: Any]
+                else { return false }
+                return obj[chave] as? Bool ?? false
+            }
+            await MainActor.run {
+                self.hookInstalado = lerBool(hook.out, "installed")
+                self.ligadoAoClaude = lerBool(mcp.out, "connected")
+            }
+        }
     }
 
     // MARK: - leitura
@@ -137,6 +237,14 @@ final class Store: ObservableObject {
         resumo.allowlist = guarda?["allowlist"] as? [String] ?? []
         resumo.hasSecret = mailbox.hasSecret || resumo.hasSecret
         mailbox = resumo
+
+        let ligado = vigia?["enabled"] as? Bool ?? false
+        let intervalo = vigia?["interval"] as? Int ?? 300
+        if ligado != vigiaLigado || intervalo != vigiaIntervalo {
+            vigiaLigado = ligado
+            vigiaIntervalo = intervalo
+            aplicarVigia()
+        }
     }
 
     func carregarEntrada(force: Bool = false) {
@@ -224,14 +332,15 @@ final class Store: ObservableObject {
     }
 
     /// Uma varredura agora: lê o que chegou e deixa o agente agir.
-    func varrerAgora() {
-        guard let cli = Store.cliPath() else { return }
+    func varrerAgora(silencioso: Bool = false) {
+        guard let cli = Store.cliPath(), !busy else { return }
         busy = true
-        statusText = S.checking
+        if !silencioso { statusText = S.checking }
         Task.detached(priority: .userInitiated) {
             let r = Self.run(cli, ["watch", "--once", "--json"])
             await MainActor.run {
                 self.busy = false
+                self.ultimaVarredura = Date()
                 self.statusText = r.status == 0 ? nil : r.err
                 self.carregarEntrada(force: true)
                 self.refresh()

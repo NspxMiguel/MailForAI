@@ -302,6 +302,21 @@ WebCrypto. The file can sit in a public repo — without the passphrase it is
 noise. Push it to GitHub Pages and the mailbox log is readable from anywhere,
 by you.
 
+## Tests
+
+There is a fake SMTP/IMAP server in `tests/`, so the path where everything works
+can be tested without any real account:
+
+```bash
+python3 tests/test_fluxo_do_app.py
+```
+
+Each test runs the exact command a button in the app fires, with the arguments
+the Swift side builds, against that server: setup, the keychain, the login test,
+inbox, reply, the queue, approve and reject, memory, every setting, the watcher,
+the daily cap, the language switch and the encrypted publish. If a command's
+name or output shape changes, the app breaks and this catches it first.
+
 ## Layout
 
 ```
@@ -315,13 +330,18 @@ mailforai_lib/
   approval.py          the queue, and the questions
   notify.py            system notifications and the waiting summary
   i18n.py              Portuguese and English for the CLI
+  watch.py             read the inbox, decide, act
+  brain.py             the model that reads and drafts
+  memory.py            what it learned about the owner
+  diagnose.py          finds the working username and password format
   history.py           the append-only log
   crypto.py            encryption for the published history
   mcp_server.py        MCP server over stdio
   keyring.py           Keychain / libsecret / env var
 docs/                  the history viewer (static, no build step)
 hooks/waiting_hook.py  the Claude Code reminder
-mac/                   the macOS menu-bar app (SwiftPM, no Xcode project)
+mac/                   the macOS app (SwiftPM, no Xcode project)
+tests/                 fake mail server and the end-to-end flow test
 ```
 
 ## Notes

@@ -100,6 +100,9 @@ struct InboxView: View {
     @ObservedObject var store: Store
     @State private var selecionada: InboxMessage?
     @State private var corpo: String = ""
+    @State private var respondendo = false
+    @State private var rascunho = ""
+    @State private var resultadoResposta: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -136,6 +139,9 @@ struct InboxView: View {
             set: { uid in
                 selecionada = store.inbox.first { $0.uid == uid }
                 corpo = ""
+                respondendo = false
+                rascunho = ""
+                resultadoResposta = nil
                 if let msg = selecionada {
                     store.corpo(de: msg) { texto in corpo = texto }
                 }
@@ -177,6 +183,37 @@ struct InboxView: View {
                         .font(.system(size: 12))
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    Divider()
+                    if respondendo {
+                        TextEditor(text: $rascunho)
+                            .font(.system(size: 12))
+                            .frame(minHeight: 120)
+                            .overlay(RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.secondary.opacity(0.3)))
+                        HStack {
+                            Button(S.cancel) { respondendo = false; rascunho = "" }
+                            Spacer()
+                            Button(S.sendReply) {
+                                store.responder(uid: mensagem.uid, corpo: rascunho) { saida in
+                                    resultadoResposta = saida
+                                    respondendo = false
+                                    rascunho = ""
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(rascunho.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    } else {
+                        HStack {
+                            Button(S.reply) { respondendo = true }
+                            if let resultadoResposta {
+                                Text(resultadoResposta.contains("pending")
+                                     ? S.replyQueued : S.replySent)
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 } else {
                     Text(S.pickAMessage).foregroundStyle(.secondary).padding(.top, 40)
                 }

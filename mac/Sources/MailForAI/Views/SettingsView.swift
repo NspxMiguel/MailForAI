@@ -19,11 +19,13 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     conta
+                    automatico
                     envio
                     leitura
                     identidade
                     cerebro
                     permitidos
+                    integracoes
                 }
                 .padding(16)
             }
@@ -53,6 +55,54 @@ struct SettingsView: View {
         }
     }
 
+    /// Sem isto o agente só age quando alguém clica — e a caixa que "funciona
+    /// sozinha" some no primeiro dia em que ninguém abre o app.
+    private var automatico: some View {
+        bloco(S.settingsAuto) {
+            Toggle(S.autoWatch, isOn: Binding(
+                get: { store.vigiaLigado },
+                set: { store.ligarVigia($0) }))
+            Picker(S.autoEvery, selection: Binding(
+                get: { store.vigiaIntervalo },
+                set: { store.mudarIntervalo($0) })) {
+                Text(S.every1min).tag(60)
+                Text(S.every5min).tag(300)
+                Text(S.every15min).tag(900)
+                Text(S.every1hour).tag(3600)
+            }
+            .frame(maxWidth: 260)
+            .disabled(!store.vigiaLigado)
+            if let ultima = store.ultimaVarredura {
+                Text(S.lastCheck + ": " + ultima.formatted(date: .omitted, time: .shortened))
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            Text(S.autoWatchHelp).font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Toggle(S.openAtLogin, isOn: Binding(
+                get: { store.abreNoLogin },
+                set: { store.definirAbrirNoLogin($0) }))
+            Text(S.openAtLoginHelp).font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var integracoes: some View {
+        bloco(S.settingsIntegrations) {
+            Toggle(S.integrationHook, isOn: Binding(
+                get: { store.hookInstalado },
+                set: { store.instalarHook($0) }))
+            Text(S.integrationHookHelp).font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Toggle(S.integrationMCP, isOn: Binding(
+                get: { store.ligadoAoClaude },
+                set: { store.conectarClaude($0) }))
+            Text(S.integrationMCPHelp).font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var envio: some View {
         bloco(S.settingsSending) {
             Picker(S.modeTitle, selection: Binding(
@@ -71,8 +121,14 @@ struct SettingsView: View {
                 Button(S.autoConfirm) { store.setMode("auto") }
             } message: { Text(S.autoBody) }
 
-            Text(S.dailyCap + ": \(store.mailbox.dailyLimit)")
-                .font(.caption).foregroundStyle(.secondary)
+            Stepper(value: Binding(
+                get: { store.mailbox.dailyLimit },
+                set: { store.definirTeto($0) }), in: 0...500, step: 5) {
+                Text(S.dailyCap + ": " + (store.mailbox.dailyLimit == 0
+                                          ? S.noCap : "\(store.mailbox.dailyLimit)"))
+                    .font(.caption)
+            }
+            .frame(maxWidth: 260)
         }
     }
 
