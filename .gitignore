@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# artefatos de build do app; o cask compila na máquina de quem instala
+mac/.build/
+mac/MailForAI.app/
