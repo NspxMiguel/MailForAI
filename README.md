@@ -335,6 +335,21 @@ WebCrypto. The file can sit in a public repo — without the passphrase it is
 noise. Push it to GitHub Pages and the mailbox log is readable from anywhere,
 by you.
 
+## Proving it works
+
+The app carries its own proof. **Settings → Check → Test the agent now**, or:
+
+```bash
+mailforai selftest
+```
+
+It stands up a fake mail server on the machine, points a throwaway account at
+it, and walks the agent through four situations — one it can answer from
+memory, one where a fact is missing, an ad, and a message carrying hidden
+instructions aimed at the agent. Then it checks that the reply actually left
+over SMTP, and that the injected message produced no outbound mail at all.
+Your real mailbox and configuration are never touched.
+
 ## Tests
 
 There is a fake SMTP/IMAP server in `tests/`, so the path where everything works

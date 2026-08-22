@@ -184,6 +184,12 @@ def scan_once(account: Dict[str, Any], limit: int = 40,
                     _force_queue=baixa_confianca)
                 entrada["result"] = resultado.get("status")
                 entrada["request_id"] = resultado.get("id")
+                if resultado.get("status") == "sent":
+                    # respondeu sozinho: o dono fica sabendo na hora, não depois
+                    notify.system(
+                        "MailForAI — respondi sozinho",
+                        f"{assunto} → {completa['from'][:60]}",
+                        subtitle=(decisao.get("reason") or "")[:80])
             except Exception as exc:
                 # uma resposta recusada — pela allowlist, pelo teto, por falha de
                 # rede — é só aquela mensagem. Deixar a exceção subir matava a

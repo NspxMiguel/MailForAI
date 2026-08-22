@@ -25,7 +25,7 @@ cp "${BUILD_DIR}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 
 # O que o CLI precisa para rodar de dentro do bundle. `hooks` vai junto porque
 # `mailforai hook` instala o lembrete apontando para o próprio caminho.
-for item in bin mailforai_lib hooks docs; do
+for item in bin mailforai_lib hooks docs tests; do
   cp -R "${REPO_DIR}/${item}" "${APP_BUNDLE}/Contents/Resources/mailforai/${item}"
 done
 find "${APP_BUNDLE}/Contents/Resources/mailforai" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true

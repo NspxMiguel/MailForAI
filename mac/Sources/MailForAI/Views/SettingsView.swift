@@ -26,6 +26,7 @@ struct SettingsView: View {
                     cerebro
                     permitidos
                     integracoes
+                    diagnostico
                 }
                 .padding(16)
             }
@@ -90,6 +91,29 @@ struct SettingsView: View {
                 set: { store.definirAbrirNoLogin($0) }))
             Text(S.openAtLoginHelp).font(.caption2).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var diagnostico: some View {
+        bloco(S.settingsCheck) {
+            HStack {
+                Button(S.runSelfTest) { store.rodarAutoteste() }
+                    .disabled(store.testando)
+                if store.testando { ProgressView().controlSize(.small) }
+            }
+            Text(S.selfTestHelp).font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let saida = store.testeSaida {
+                ScrollView {
+                    Text(saida)
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 160)
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
+            }
         }
     }
 

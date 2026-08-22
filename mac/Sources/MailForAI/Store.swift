@@ -119,6 +119,24 @@ final class Store: ObservableObject {
         act(ligar ? ["service"] : ["service", "--remove"])
     }
 
+    @Published var testeSaida: String?
+    @Published var testando = false
+
+    /// Roda o autoteste e devolve o texto para a tela. É a resposta para
+    /// "será que isso funciona mesmo?" sem depender de acreditar em mim.
+    func rodarAutoteste() {
+        guard let cli = Store.cliPath(), !testando else { return }
+        testando = true
+        testeSaida = nil
+        Task.detached(priority: .userInitiated) {
+            let r = Self.run(cli, ["selftest"])
+            await MainActor.run {
+                self.testando = false
+                self.testeSaida = (r.out + r.err).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+    }
+
     func instalarHook(_ ligar: Bool) {
         act(ligar ? ["hook"] : ["hook", "--remove"])
         conferirIntegracoes()

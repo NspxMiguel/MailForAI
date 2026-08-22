@@ -767,6 +767,21 @@ def cmd_hook(args) -> int:
     return 0
 
 
+def cmd_selftest(args) -> int:
+    """Prova o ciclo inteiro numa caixa de mentira, sem tocar na de verdade."""
+    from . import selftest
+    print(T("Testando o agente numa caixa de mentira (nada aqui toca a sua)…\n",
+            "Testing the agent against a stand-in mailbox (nothing here touches yours)…\n"))
+    resultado = selftest.run()
+    if args.json:
+        _out(resultado, True)
+        return 0 if resultado.get("ok") else 1
+    if resultado.get("error"):
+        return _fail(resultado["error"])
+    print(f"\n{resultado['passed']}/{resultado['total']} " + T("passaram", "passed"))
+    return 0 if resultado["ok"] else 1
+
+
 def cmd_state(args) -> int:
     """Tudo que a interface precisa, numa chamada só.
 
@@ -1036,6 +1051,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("hook", cmd_hook, "lembrar no Claude Code, em qualquer projeto, o que está parado")
     p.add_argument("--remove", action="store_true", help="desinstalar o lembrete")
     p.add_argument("--status", action="store_true", help="dizer apenas se está instalado")
+
+    add("selftest", cmd_selftest, "provar que o agente funciona, numa caixa de mentira")
 
     add("state", cmd_state, "estado inteiro em JSON (é o que o app lê)")
 

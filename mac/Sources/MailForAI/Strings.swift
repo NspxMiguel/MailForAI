@@ -160,6 +160,16 @@ struct S {
           "Needed for the agent to read the mailbox without you opening anything.")
     }
     static var noCap: String { t("sem teto", "no cap") }
+    static var settingsCheck: String { t("Conferir", "Check") }
+    static var runSelfTest: String { t("Testar o agente agora", "Test the agent now") }
+    static var selfTestHelp: String {
+        t("Passa o agente por quatro situações numa caixa de mentira: uma que ele responde, uma "
+          + "que ele pergunta, uma propaganda, e uma mensagem com instruções escondidas. Nada "
+          + "toca a sua caixa.",
+          "Puts the agent through four situations against a stand-in mailbox: one it answers, one "
+          + "it asks about, an ad, and a message with hidden instructions. Nothing touches your "
+          + "real mailbox.")
+    }
     static var settingsIntegrations: String { t("Integrações", "Integrations") }
     static var integrationHook: String {
         t("Avisar no Claude Code quando algo estiver esperando",
