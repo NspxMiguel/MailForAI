@@ -513,6 +513,21 @@ def cmd_serve(args) -> int:
     return 0
 
 
+def cmd_app(args) -> int:
+    """Abre o app. Útil quando a barra de menus está cheia e o ícone sumiu."""
+    import subprocess
+    caminhos = ["/Applications/MailForAI.app",
+                str(Path(__file__).resolve().parent.parent / "mac" / "MailForAI.app")]
+    alvo = next((c for c in caminhos if Path(c).exists()), None)
+    if not alvo:
+        return _fail(T("o app não está instalado — brew install --cask nspxmiguel/tap/mailforai",
+                       "the app is not installed — brew install --cask nspxmiguel/tap/mailforai"))
+    subprocess.run(["open", "-a", alvo] + (["--args", "--window"] if args.window else []),
+                   check=False)
+    print(T("app aberto", "app opened"))
+    return 0
+
+
 def cmd_lang(args) -> int:
     cfg = config.load()
     if args.code:
@@ -713,6 +728,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("serve", cmd_serve, "abrir o histórico no navegador (localhost)")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-open", action="store_true")
+
+    p = add("app", cmd_app, "abrir o app do MailForAI")
+    p.add_argument("--window", action="store_true", help="forçar janela em vez da barra")
 
     p = add("lang", cmd_lang, "idioma do CLI (pt | en)")
     p.add_argument("code", nargs="?", choices=["pt", "en"])

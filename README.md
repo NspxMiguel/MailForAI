@@ -161,8 +161,9 @@ rejected requests keep the note, which the agent reads before trying again.
 
 1. **The Mac app.** Menu-bar icon with the number of waiting items; the panel
    lists each message with subject, recipient, reason and body, and approves or
-   rejects with a click. `--window` opens the same panel as a regular window,
-   for menu bars that are already full.
+   rejects with a click. macOS hides menu-bar icons that do not fit, so opening
+   the app again — Launchpad, Finder, or `mailforai app` — brings the same panel
+   up as a window.
 2. **The terminal.** `mailforai pending`, `approve`, `reject`.
 3. **Your AI chat.** `mailforai mcp --owner` adds `list_pending`,
    `approve_email`, `reject_email` and `answer_question`, so you can clear the
