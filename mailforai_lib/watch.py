@@ -173,16 +173,24 @@ def scan_once(account: Dict[str, Any], limit: int = 40,
             corpo = decisao.get("reply_body") or ""
             assunto = decisao.get("reply_subject") or f"Re: {completa['subject']}"
             baixa_confianca = float(decisao.get("confidence") or 0) < float(opcoes["min_confidence"])
-            resultado = mailer.send(
-                account, completa["from"], assunto, corpo,
-                in_reply_to=completa.get("message_id"),
-                agent="mailforai-watch",
-                reason=(decisao.get("reason") or "") +
-                       (" [confiança baixa: mandei para a fila]" if baixa_confianca else ""),
-                # confiança baixa nunca sai sozinha, mesmo em modo automático
-                _force_queue=baixa_confianca)
-            entrada["result"] = resultado.get("status")
-            entrada["request_id"] = resultado.get("id")
+            try:
+                resultado = mailer.send(
+                    account, completa["from"], assunto, corpo,
+                    in_reply_to=completa.get("message_id"),
+                    agent="mailforai-watch",
+                    reason=(decisao.get("reason") or "") +
+                           (" [confiança baixa: mandei para a fila]" if baixa_confianca else ""),
+                    # confiança baixa nunca sai sozinha, mesmo em modo automático
+                    _force_queue=baixa_confianca)
+                entrada["result"] = resultado.get("status")
+                entrada["request_id"] = resultado.get("id")
+            except Exception as exc:
+                # uma resposta recusada — pela allowlist, pelo teto, por falha de
+                # rede — é só aquela mensagem. Deixar a exceção subir matava a
+                # varredura e as outras mensagens ficavam sem tratamento.
+                entrada["action"] = "blocked"
+                entrada["result"] = "blocked"
+                entrada["reason"] = str(exc)[:300]
         elif decisao["action"] == "ask":
             pergunta = approval.ask(
                 account["name"], decisao.get("question") or "?",
