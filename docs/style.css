@@ -1,0 +1,111 @@
+:root {
+  --fundo: #f7f7f5;
+  --superficie: #ffffff;
+  --borda: #e3e2dd;
+  --texto: #1d1c1a;
+  --fraco: #6f6d68;
+  --destaque: #b4530a;
+  --ok: #2f7a4d;
+  --recusa: #9a6b12;
+  --falha: #a33232;
+  --raio: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #16151a;
+    --superficie: #1f1e24;
+    --borda: #34323b;
+    --texto: #eceaf2;
+    --fraco: #a09da8;
+    --destaque: #e08a3c;
+    --ok: #6cc48d;
+    --recusa: #d9b25a;
+    --falha: #e77b7b;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--fundo);
+  color: var(--texto);
+}
+.topo {
+  display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;
+  align-items: center; padding: 26px clamp(16px, 5vw, 48px);
+  border-bottom: 1px solid var(--borda); background: var(--superficie);
+}
+.marca { display: flex; gap: 14px; align-items: center; }
+.glifo { font-size: 32px; }
+h1 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+.sub { margin: 2px 0 0; color: var(--fraco); font-size: 13px; }
+.resumo { display: flex; gap: 10px; }
+.cartao {
+  display: flex; flex-direction: column; align-items: center; min-width: 84px;
+  padding: 8px 14px; border: 1px solid var(--borda); border-radius: var(--raio);
+}
+.cartao strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.cartao span { font-size: 11px; color: var(--fraco); text-transform: uppercase; letter-spacing: .05em; }
+main { max-width: 880px; margin: 0 auto; padding: 24px clamp(16px, 5vw, 48px) 60px; }
+.painel {
+  background: var(--superficie); border: 1px solid var(--borda);
+  border-radius: var(--raio); padding: 28px;
+}
+.painel h2 { margin-top: 0; font-size: 17px; }
+form { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px; }
+input[type=password], input[type=search] {
+  flex: 1 1 240px; padding: 10px 12px; border: 1px solid var(--borda);
+  border-radius: 8px; background: var(--fundo); color: var(--texto); font-size: 14px;
+}
+button {
+  padding: 10px 18px; border: 0; border-radius: 8px; cursor: pointer;
+  background: var(--destaque); color: #fff; font-size: 14px; font-weight: 600;
+}
+.lembrar { display: block; margin-top: 10px; font-size: 13px; color: var(--fraco); }
+.erro { color: var(--falha); font-size: 13px; }
+.filtros { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; align-items: center; }
+.chips { display: flex; gap: 6px; }
+.chip {
+  background: transparent; color: var(--fraco); border: 1px solid var(--borda);
+  padding: 7px 13px; font-size: 13px; font-weight: 500;
+}
+.chip.ativo { background: var(--texto); color: var(--fundo); border-color: var(--texto); }
+.lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.item {
+  background: var(--superficie); border: 1px solid var(--borda);
+  border-left: 3px solid var(--fraco); border-radius: var(--raio); overflow: hidden;
+}
+.item.sent { border-left-color: var(--ok); }
+.item.blocked { border-left-color: var(--recusa); }
+.item.failed { border-left-color: var(--falha); }
+.cabeca {
+  width: 100%; display: flex; gap: 12px; align-items: baseline; text-align: left;
+  background: transparent; color: inherit; border: 0; padding: 14px 16px; font-weight: 400;
+}
+.cabeca:hover { background: color-mix(in srgb, var(--texto) 4%, transparent); }
+.assunto { flex: 1; font-weight: 600; }
+.para { color: var(--fraco); font-size: 13px; }
+.data { color: var(--fraco); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.corpo { padding: 0 16px 16px; border-top: 1px solid var(--borda); }
+.corpo pre {
+  white-space: pre-wrap; word-break: break-word; margin: 14px 0 0;
+  font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--fundo); padding: 14px; border-radius: 8px; overflow-x: auto;
+}
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; color: var(--fraco); padding-top: 14px; }
+.motivo { color: var(--recusa); font-size: 13px; padding-top: 12px; }
+.vazio { color: var(--fraco); text-align: center; padding: 40px; }
+footer {
+  display: flex; gap: 10px; justify-content: center; padding: 24px;
+  font-size: 12px; color: var(--fraco); border-top: 1px solid var(--borda);
+}
+footer a { color: var(--fraco); }
+
+@media (max-width: 640px) {
+  /* no celular o assunto sozinho já é largo: empilhar em vez de espremer */
+  .cabeca { flex-direction: column; gap: 3px; }
+  .data { align-self: flex-start; }
+  .resumo { width: 100%; }
+  .cartao { flex: 1; min-width: 0; }
+  .topo { padding: 20px 16px; }
+}
