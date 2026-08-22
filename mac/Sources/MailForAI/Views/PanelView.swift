@@ -3,6 +3,7 @@ import SwiftUI
 struct PanelView: View {
     @ObservedObject var store: Store
     @AppStorage("language") private var idioma: String = Lang.system.rawValue
+    @State private var confirmarAuto = false
     @State private var expandido: Set<String> = []
     @State private var notas: [String: String] = [:]
     @State private var respostas: [String: String] = [:]
@@ -52,13 +53,24 @@ struct PanelView: View {
             Spacer()
             Picker("", selection: Binding(
                 get: { store.mailbox.mode },
-                set: { store.setMode($0) })) {
+                // ligar o modo automático desarma a única trava que segura um
+                // envio: vale um clique a mais. Voltar para `confirm` é sempre
+                // direto — aperta a trava, não afrouxa.
+                set: { novo in
+                    if novo == "auto" { confirmarAuto = true } else { store.setMode(novo) }
+                })) {
                 Text(S.modeConfirm).tag("confirm")
                 Text(S.modeAuto).tag("auto")
             }
             .pickerStyle(.menu)
             .frame(width: 150)
             .help(S.modeTitle)
+            .alert(S.autoTitle, isPresented: $confirmarAuto) {
+                Button(S.cancel, role: .cancel) { }
+                Button(S.autoConfirm) { store.setMode("auto") }
+            } message: {
+                Text(S.autoBody)
+            }
         }
         .padding(12)
     }

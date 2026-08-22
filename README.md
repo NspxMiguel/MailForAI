@@ -144,6 +144,10 @@ mailforai mode confirm      # the default: every message waits for you
 mailforai mode auto         # it sends on its own, still inside the leash below
 ```
 
+In the app, switching to `auto` asks for confirmation first — it disarms the
+only thing standing between the agent and a sent message. Switching back never
+asks: tightening a leash needs no ceremony.
+
 In `confirm`, `send_email` returns a request id instead of sending, and the
 message sits in the queue until you decide:
 

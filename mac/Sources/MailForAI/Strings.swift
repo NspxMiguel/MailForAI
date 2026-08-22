@@ -61,4 +61,15 @@ struct S {
     static var showLess: String { t("Encolher", "Show less") }
     static var noSecret: String { t("sem senha no chaveiro", "no password in the keychain") }
     static var language: String { t("Idioma", "Language") }
+    static var cancel: String { t("Cancelar", "Cancel") }
+    static var autoTitle: String {
+        t("Deixar a IA enviar sozinha?", "Let the AI send on its own?")
+    }
+    static var autoBody: String {
+        t("Nesse modo as mensagens saem sem passar por você. A lista de "
+          + "destinatários permitidos e o teto diário continuam valendo.",
+          "In this mode messages go out without your review. The recipient "
+          + "allowlist and the daily cap still apply.")
+    }
+    static var autoConfirm: String { t("Enviar sozinha", "Send on its own") }
 }
