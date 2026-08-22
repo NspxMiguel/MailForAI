@@ -31,24 +31,40 @@
 - [x] *"ja criei o email, so precisamos descobrir agr como te damos acesso a ele"* —
   `Claude@nspx.dev` existe no iCloud. O acesso é uma **senha de aplicativo**
   gerada em account.apple.com (só ele pode: exige a senha dele e o 2FA).
-- [ ] *"dai coloca uma opção, de enviar email automaticamente, ou vc ter q confirmar
-  primeiro, tipo o claude code, q tem essas opcoes"* — modos de aprovação.
-- [ ] *"a ai pode fazer varias coisas, como sla, responder email de suporte (...)
+- [x] *"dai coloca uma opção, de enviar email automaticamente, ou vc ter q confirmar
+  primeiro, tipo o claude code, q tem essas opcoes"* — `mailforai mode auto|confirm`,
+  com `confirm` de padrão. No app é o menu do cabeçalho.
+- [x] *"a ai pode fazer varias coisas, como sla, responder email de suporte (...)
   mando pro email do claude e ele responde pra mim (...) tbm com apps meus por
-  exemplo, se eu implementar funcao de suporte, claude ajuda eles"*.
-- [ ] *"n quero interface web, quero o esquema de homebrew q eu fiz tipo no
+  exemplo, se eu implementar funcao de suporte, claude ajuda eles"* — enviar,
+  ler a caixa (IMAP) e responder na mesma thread, pelo CLI ou pelo MCP.
+- [x] *"n quero interface web, quero o esquema de homebrew q eu fiz tipo no
   taskmanager, para parecer um app de vdd. alem de ter o cli pra propria ia poder
-  fazer"* — app nativo via Homebrew, no molde do Mac Task Manager.
-- [ ] *"tbm quero q eu possa aceitar direito por aqui, pelo chat os emails, caso eu
-  esqueça do app"* — aprovar pelo chat do Claude Code.
-- [ ] *"seria legal, se aparece-se sempre, o claude code enchendo o saco, msm se n
+  fazer"* — app SwiftUI na barra de menus,
+  `brew install --cask nspxmiguel/tap/mailforai`, com o CLI dentro do bundle.
+- [x] *"tbm quero q eu possa aceitar direito por aqui, pelo chat os emails, caso eu
+  esqueça do app"* — `mailforai mcp --owner` dá `list_pending`, `approve_email`,
+  `reject_email` e `answer_question`; já registrado no Claude Code dele.
+- [x] *"seria legal, se aparece-se sempre, o claude code enchendo o saco, msm se n
   for no msm projeto, aparece solicitacao de email revisar, aceitar ou recusar"* —
-  aviso de pendência em qualquer sessão, não só neste projeto.
-- [ ] *"a ia tbm faz perguntas pra vc quando necessario, ex: suporte nintendo, eles
+  `mailforai hook` instala em `~/.claude/settings.json` (SessionStart e
+  UserPromptSubmit), vale para todo projeto. Só fala quando há algo parado.
+- [x] *"a ia tbm faz perguntas pra vc quando necessario, ex: suporte nintendo, eles
   podem querer perguntar seu id (...) quando precisa de informacao extra colocar
-  informacao extra"* — a IA pergunta, ele responde.
+  informacao extra"* — `ask_owner` / `check_answers` no MCP, `mailforai ask` e
+  `answer` no CLI, e cartão com campo de resposta no app.
 - [ ] *"pro desing do app dps usamos claude desing (...) quando for fazer o prompt
   pro claude desing me avisa, q dai vamos usar o fable"* — avisar antes de escrever
   o prompt do Claude Design.
-- [ ] Traduzir o CLI e a página do histórico (i18n) — regra nova, vale para todo
-      projeto.
+- [x] i18n — app, página e CLI em português e inglês, seguindo o sistema, com
+      troca manual e `MAILFORAI_LANG`. Regra gravada no CLAUDE.md.
+
+## A fazer
+
+- [ ] *"pro desing do app dps usamos claude desing (...) quando for fazer o prompt
+  pro claude desing me avisa, q dai vamos usar o fable"* — **aguardando ele**: aviso
+  antes de escrever o prompt.
+- [ ] Traduzir os textos de ajuda do argparse (`--help`) — o resto do CLI já está
+  nos dois idiomas.
+- [ ] **Falta ele**: gerar a senha de aplicativo em account.apple.com e rodar
+  `pbpaste | mailforai secret claude --stdin`. Sem isso o envio para no SMTP.
