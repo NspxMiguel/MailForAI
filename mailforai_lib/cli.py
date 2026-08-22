@@ -6,7 +6,8 @@ import json
 import sys
 from typing import Any, Dict
 
-from . import __version__, config, crypto, guard, history, keyring, mailer, providers, reader
+from . import (__version__, config, crypto, guard, history, identity, keyring,
+               mailer, providers, reader)
 from .paths import CONFIG_FILE, HISTORY_FILE, ensure_home
 
 
@@ -58,8 +59,22 @@ def cmd_setup(args) -> int:
         name=name, address=address, provider=provider, username=username,
         display_name=args.display_name, smtp_host=smtp_host, imap_host=imap_host,
     )
+    print("\nComo a IA se apresenta para quem recebe:")
+    print("  ia          diz que é um assistente de IA — o padrão, e o único sem ambiguidade")
+    print("  assistente  escreve em nome do dono, sem entrar no mérito de ser software")
+    print("  dono        assina como o próprio dono; quem recebe pensa estar falando com ele")
+    modo = (args.identity or input("Modo [ia]: ").strip() or "ia")
+    if modo not in identity.MODES:
+        return _fail(f"modo '{modo}' não existe")
+    dono = args.owner_name or input("Nome do dono da caixa (ex.: Miguel): ").strip()
+    account["identity"] = dict(identity.DEFAULT_IDENTITY)
+    account["identity"].update({"mode": modo, "owner_name": dono,
+                                "agent_name": account["display_name"]})
+
     config.add_account(name, account)
     print(f"\nConta '{name}' gravada em {CONFIG_FILE}")
+    completa = config.get_account(name)
+    print(f"As mensagens sairão como: {identity.display_name(completa)} <{address}>")
 
     print(f"\nSenha — {preset['secret_hint']}")
     print("Ela vai para o chaveiro do sistema. Não fica em arquivo nenhum.")
@@ -75,7 +90,13 @@ def cmd_setup(args) -> int:
 
 def cmd_secret(args) -> int:
     account = config.get_account(args.account)
-    secret = getpass.getpass(f"Senha da conta '{account['name']}' (não aparece na tela): ")
+    if args.stdin:
+        # `pbpaste | mailforai secret conta --stdin` leva a senha da área de
+        # transferência direto para o chaveiro, sem passar por tela nem histórico
+        # de shell — é o caminho quando outra pessoa (ou um agente) está olhando.
+        secret = sys.stdin.read().strip()
+    else:
+        secret = getpass.getpass(f"Senha da conta '{account['name']}' (não aparece na tela): ")
     if not secret:
         return _fail("senha vazia")
     backend = keyring.set_secret(account["name"], secret)
@@ -295,6 +316,45 @@ def cmd_limit(args) -> int:
     return _update_guard(args.account, lambda g: g.__setitem__("daily_limit", args.n))
 
 
+def cmd_identity(args) -> int:
+    cfg = config.load()
+    name = args.account or cfg.get("default_account")
+    if not name or name not in cfg.get("accounts", {}):
+        return _fail("conta não encontrada")
+    conta = cfg["accounts"][name]
+    ident = conta.setdefault("identity", dict(identity.DEFAULT_IDENTITY))
+    mudou = False
+    if args.mode:
+        ident["mode"] = args.mode
+        mudou = True
+    for campo, valor in (("owner_name", args.owner_name), ("agent_name", args.agent_name),
+                         ("signature", args.signature)):
+        if valor is not None:
+            ident[campo] = valor
+            mudou = True
+    if mudou:
+        config.save(cfg)
+
+    conta_completa = config.get_account(name)
+    resumo = {
+        "mode": ident["mode"],
+        "from": f"{identity.display_name(conta_completa)} <{conta['address']}>",
+        "signature": identity.signature(conta_completa),
+        "headers": identity.headers(conta_completa),
+    }
+    if args.json:
+        _out(resumo, True)
+        return 0
+    print(f"modo: {resumo['mode']}\n"
+          f"De:   {resumo['from']}\n"
+          f"assinatura:\n  " + resumo["signature"].replace("\n", "\n  "))
+    print("cabeçalhos: " + (", ".join(f"{k}: {v}" for k, v in resumo["headers"].items())
+                            or "nenhum — a mensagem não se anuncia como automática"))
+    if resumo["mode"] == "dono":
+        print("\naviso: neste modo quem recebe acredita estar falando com a pessoa.")
+    return 0
+
+
 def cmd_serve(args) -> int:
     from .webserver import serve
     serve(port=args.port, account=args.account, open_browser=not args.no_open)
@@ -333,8 +393,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--display-name")
     p.add_argument("--smtp-host")
     p.add_argument("--imap-host")
+    p.add_argument("--identity", choices=list(identity.MODES))
+    p.add_argument("--owner-name")
 
-    add("secret", cmd_secret, "gravar/trocar a senha da conta no chaveiro")
+    p = add("secret", cmd_secret, "gravar/trocar a senha da conta no chaveiro")
+    p.add_argument("--stdin", action="store_true",
+                   help="ler a senha da entrada padrão (ex.: pbpaste | mailforai secret conta --stdin)")
     add("accounts", cmd_accounts, "listar as contas configuradas")
     add("doctor", cmd_doctor, "testar login SMTP e IMAP")
 
@@ -385,6 +449,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = add("limit", cmd_limit, "teto de mensagens por 24h (0 = sem teto)")
     p.add_argument("n", type=int)
+
+    p = add("identity", cmd_identity, "como a IA se apresenta (ia | assistente | dono)")
+    p.add_argument("mode", nargs="?", choices=list(identity.MODES),
+                   help="omita para só ver a identidade atual")
+    p.add_argument("--owner-name", help="nome do dono da caixa")
+    p.add_argument("--agent-name", help="nome da IA")
+    p.add_argument("--signature", help="assinatura fixa; vazio deixa o modo escolher")
 
     p = add("serve", cmd_serve, "abrir o histórico no navegador (localhost)")
     p.add_argument("--port", type=int, default=8765)

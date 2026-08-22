@@ -10,7 +10,7 @@ import sys
 import traceback
 from typing import Any, Dict
 
-from . import __version__, config, guard, history, keyring, mailer, reader
+from . import __version__, config, guard, history, identity, keyring, mailer, reader
 
 PROTOCOL_VERSION = "2025-06-18"
 
@@ -20,7 +20,9 @@ TOOLS = [
         "description": (
             "Envia um e-mail a partir da caixa da IA. Respeita a allowlist e o teto "
             "diário configurados pelo dono; um envio recusado devolve o motivo e "
-            "fica registrado no histórico."
+            "fica registrado no histórico. O remetente e a assinatura são aplicados "
+            "pela identidade da caixa — não escreva assinatura no corpo, e consulte "
+            "mailbox_info antes de se apresentar no texto."
         ),
         "inputSchema": {
             "type": "object",
@@ -34,6 +36,17 @@ TOOLS = [
                 "account": {"type": "string", "description": "conta a usar; omita para a padrão"},
             },
             "required": ["to", "subject", "body"],
+        },
+    },
+    {
+        "name": "mailbox_info",
+        "description": "Como esta caixa se apresenta e o que ela permite: endereço, "
+                       "modo de identidade, assinatura aplicada, allowlist, teto diário "
+                       "e quanto do teto já foi usado nas últimas 24h. Consulte antes de "
+                       "escrever a primeira mensagem de uma conversa.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"account": {"type": "string"}},
         },
     },
     {
@@ -103,6 +116,20 @@ def _call_tool(name: str, params: Dict[str, Any]) -> str:
             agent=params.get("_agent") or "mcp",
         )
         return json.dumps(result, ensure_ascii=False)
+    if name == "mailbox_info":
+        account = _account(params)
+        guarda = account["guard"]
+        return json.dumps({
+            "address": account["address"],
+            "from": f"{identity.display_name(account)} <{account['address']}>",
+            "identity_mode": account["identity"]["mode"],
+            "signature_applied": identity.signature(account),
+            "announces_itself_as_automated": bool(identity.headers(account)),
+            "allowlist": guarda.get("allowlist") or "qualquer destinatário",
+            "blocklist": guarda.get("blocklist") or [],
+            "daily_limit": guarda.get("daily_limit"),
+            "sent_last_24h": len(history.sent_since(account["name"], hours=24)),
+        }, ensure_ascii=False)
     if name == "list_inbox":
         account = _account(params)
         return json.dumps(reader.inbox(account, limit=int(params.get("limit", 15)),

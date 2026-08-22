@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from typing import Any, Dict, List, Optional
 
-from . import guard, history, keyring
+from . import guard, history, identity, keyring
 
 
 class SendError(RuntimeError):
@@ -36,7 +36,8 @@ def build_message(
     html: Optional[str] = None,
 ) -> EmailMessage:
     msg = EmailMessage()
-    msg["From"] = formataddr((account.get("display_name") or "", account["address"]))
+    # o nome no De: vem da identidade escolhida pelo dono, não do apelido da conta
+    msg["From"] = formataddr((identity.display_name(account), account["address"]))
     msg["To"] = ", ".join(to)
     if cc:
         msg["Cc"] = ", ".join(cc)
@@ -45,10 +46,9 @@ def build_message(
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = references or in_reply_to
-    # quem recebe merece saber que do outro lado tem um agente, não uma pessoa
-    msg["X-Mailer"] = "MailForAI"
-    msg["Auto-Submitted"] = "auto-generated"
-    msg.set_content(body)
+    for chave, valor in identity.headers(account).items():
+        msg[chave] = valor
+    msg.set_content(identity.sign(body, account))
     if html:
         msg.add_alternative(html, subtype="html")
     for path in attachments or []:

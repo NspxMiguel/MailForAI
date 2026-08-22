@@ -62,9 +62,12 @@ without touching anything else you own.
 claude mcp add mailforai -- /absolute/path/to/MailForAI/bin/mailforai mcp
 ```
 
-That exposes five tools: `send_email`, `list_inbox`, `read_email`,
-`reply_email`, `sent_history`. A refused send comes back as a tool error with
-the reason, so the agent learns the boundary instead of retrying blindly.
+That exposes six tools: `send_email`, `list_inbox`, `read_email`,
+`reply_email`, `sent_history`, and `mailbox_info` — the last one tells the
+agent how the mailbox introduces itself and how much of the daily cap is left,
+so it does not sign the body twice or guess at its own name. A refused send
+comes back as a tool error with the reason, so the agent learns the boundary
+instead of retrying blindly.
 
 ### CLI (agents without MCP)
 
@@ -76,6 +79,36 @@ asked:
 mailforai send --json --agent codex -t "support@example.com" -s "Subject" -b "Body"
 mailforai inbox --json --unread
 ```
+
+## How the agent introduces itself
+
+Three postures, because the situations really are different. The owner picks —
+it is their identity on the line.
+
+```bash
+mailforai identity                              # what recipients see today
+mailforai identity ia --owner-name Miguel       # the default
+mailforai identity assistente
+mailforai identity dono
+```
+
+| Mode | `From:` | Signature | Announces itself as automated |
+| --- | --- | --- | --- |
+| `ia` | `Claude (IA de Miguel)` | says it is an AI assistant | yes |
+| `assistente` | `Claude · assistente de Miguel` | writes on the owner's behalf | yes |
+| `dono` | `Miguel` | the owner's name | no |
+
+`ia` is the default: it is the only one that leaves no doubt on the other end,
+and a default that misleads by omission would be the tool's choice, not the
+owner's.
+
+`dono` drops the `X-Mailer` and `Auto-Submitted` headers too — keeping them
+would say one thing in the body and another in the envelope. Worth knowing
+before picking it: recipients will believe they are corresponding with the
+person, and some services' terms forbid exactly that.
+
+`Auto-Submitted` also does real work in the other two modes — mail servers read
+it to avoid firing auto-replies at robots.
 
 ## Keeping it on a leash
 
@@ -119,6 +152,7 @@ mailforai_lib/
   mailer.py            SMTP send
   reader.py            IMAP inbox and read
   guard.py             allowlist, blocklist, daily cap
+  identity.py          how the agent introduces itself
   history.py           the append-only log
   crypto.py            encryption for the published history
   mcp_server.py        MCP server over stdio
@@ -128,9 +162,9 @@ docs/                  the history viewer (static, no build step)
 
 ## Notes
 
-- **Recipients can tell.** Every message carries `X-Mailer: MailForAI` and
-  `Auto-Submitted: auto-generated`. An agent writing to a human should say so;
-  these headers make that true at the protocol level too.
+- **Recipients can tell, by default.** Outside `dono` mode every message carries
+  `X-Mailer: MailForAI` and `Auto-Submitted: auto-generated`, so the disclosure
+  holds at the protocol level and not only in the signature.
 - **`openssl` is required only by `publish`** — the Python standard library has
   no symmetric cipher. Everything else is stdlib.
 - The CLI and the history viewer are currently in Portuguese; the code and the

@@ -3,6 +3,7 @@
 import json
 from typing import Any, Dict, Optional
 
+from . import identity as identity_mod
 from . import providers
 from .paths import CONFIG_FILE, ensure_home
 
@@ -56,6 +57,9 @@ def get_account(name: Optional[str] = None) -> Dict[str, Any]:
     guard = dict(DEFAULT_GUARD)
     guard.update(account.get("guard") or {})
     account["guard"] = guard
+    ident = dict(identity_mod.DEFAULT_IDENTITY)
+    ident.update(account.get("identity") or {})
+    account["identity"] = ident
     return account
 
 
@@ -93,6 +97,7 @@ def build_account(
         "smtp": smtp,
         "imap": imap,
         "guard": dict(DEFAULT_GUARD),
+        "identity": dict(identity_mod.DEFAULT_IDENTITY),
     }
 
 
