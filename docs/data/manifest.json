@@ -1,0 +1,5 @@
+{
+  "_": "O que existe ao lado desta página. Versionado de propósito: a página lê este arquivo antes de pedir qualquer histórico, e assim não dispara um 404 atrás de arquivo que ela já sabe que não está aqui. `mailforai publish` reescreve com published=true; `mailforai serve` responde com local=true sem tocar no disco.",
+  "local": false,
+  "published": false
+}

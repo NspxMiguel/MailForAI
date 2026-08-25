@@ -458,6 +458,44 @@ def t_publish():
         raise AssertionError("senha errada abriu o histórico")
     except crypto.CryptoError:
         pass
+    manifesto = Path(destino) / "manifest.json"
+    assert manifesto.exists(), "publish não deixou o manifesto ao lado do cifrado"
+    assert json.loads(manifesto.read_text()) == {"local": False, "published": True}, \
+        "o manifesto publicado não anuncia o histórico cifrado"
+
+
+@teste("a página não pede histórico que não está ali")
+def t_manifesto():
+    # o manifesto versionado é o do site de apresentação: não tem histórico nenhum,
+    # e é ele que impede a página de sondar os dois arquivos e sujar o console
+    versionado = json.loads((RAIZ / "docs" / "data" / "manifest.json").read_text())
+    assert versionado["local"] is False and versionado["published"] is False, \
+        "o manifesto do repositório anuncia histórico que não está publicado"
+
+    # e o `serve` tem que sobrepor esse arquivo, senão a página não busca o que ele serve
+    import threading
+    import urllib.request
+    sys.path.insert(0, str(RAIZ))
+    from mailforai_lib import webserver
+    import socketserver
+
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("127.0.0.1", 0), webserver.make_handler(None)) as httpd:
+        porta = httpd.server_address[1]
+        fio = threading.Thread(target=httpd.serve_forever, daemon=True)
+        fio.start()
+        try:
+            base = f"http://127.0.0.1:{porta}"
+            servido = json.loads(urllib.request.urlopen(f"{base}/data/manifest.json").read())
+            assert servido["local"] is True, "o serve não anunciou o histórico local"
+            corpo = json.loads(urllib.request.urlopen(f"{base}/data/history.json").read())
+            assert "entries" in corpo, "o serve deixou de responder o histórico em claro"
+            # a rota tem que continuar valendo com query string pendurada
+            comq = json.loads(
+                urllib.request.urlopen(f"{base}/data/manifest.json?x=1").read())
+            assert comq["local"] is True, "a query string derrubou a rota do manifesto"
+        finally:
+            httpd.shutdown()
 
 
 # ---------------------------------------------------------------- execução
@@ -497,7 +535,7 @@ def main() -> int:
                    t_barra_vazamento, t_legitima_passa, t_anti_laco,
                    t_ciclo_completo, t_injecao_ponta_a_ponta, t_recusa_nao_derruba,
                    t_servico,
-                   t_idioma, t_publish]:
+                   t_idioma, t_publish, t_manifesto]:
         funcao()
 
     print(f"\n{len(passaram)} passaram, {len(falhas)} falharam")

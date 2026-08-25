@@ -345,6 +345,11 @@ def cmd_publish(args) -> int:
         target.write_text(crypto.encrypt_json(payload, passphrase), encoding="utf-8")
     except crypto.CryptoError as exc:
         return _fail(str(exc))
+    # sem isto a página nem pede o arquivo cifrado: ela confia no manifesto para
+    # não sondar arquivo ausente e sujar o console de quem só veio ler a apresentação
+    (out_dir / "manifest.json").write_text(
+        json.dumps({"local": False, "published": True}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8")
     print(f"{len(entries)} mensagens cifradas em {target}")
     print("O arquivo pode ir para um repositório público: sem a senha é ruído.")
     return 0

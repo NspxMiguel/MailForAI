@@ -3,6 +3,13 @@
  * Dois modos, decididos pelo que existe ao lado da página:
  *   data/history.json      — servido por `mailforai serve` na própria máquina, em claro
  *   data/history.enc.json  — publicado num site estático, cifrado; a senha decifra aqui
+ *
+ * Nenhum dos dois existe no site de apresentação, e é assim que tem que ser: o
+ * histórico é e-mail de verdade, e publicá-lo é decisão de quem instalou. Só que
+ * pedir arquivo ausente imprime 404 vermelho no console, e `catch` não apaga —
+ * o navegador registra antes de devolver a promessa. Por isso o `data/manifest.json`,
+ * que é versionado e portanto sempre responde: ele diz o que existe aqui, e a
+ * página só busca o que o manifesto anunciou.
  */
 
 const CHAVE_LEMBRAR = "mailforai.pass";
@@ -44,13 +51,32 @@ async function decifrar(blob, senha) {
 
 /* ---------------------------------------------------------------- carregamento */
 
+/* O que o manifesto anuncia. Sem manifesto (site publicado por uma versão antiga,
+ * ou pasta montada na mão), volta a sondar os dois — comportamento de antes, com
+ * o console sujo de antes, que é melhor que deixar de achar histórico que existe. */
+async function inventario() {
+  const resposta = await fetch("data/manifest.json", { cache: "no-store" }).catch(() => null);
+  if (!resposta || !resposta.ok) return { local: true, published: true };
+  try {
+    const manifesto = await resposta.json();
+    return { local: manifesto.local === true, published: manifesto.published === true };
+  } catch (_) {
+    return { local: true, published: true };
+  }
+}
+
 async function carregar() {
-  const local = await fetch("data/history.json", { cache: "no-store" }).catch(() => null);
+  const tem = await inventario();
+  const local = tem.local
+    ? await fetch("data/history.json", { cache: "no-store" }).catch(() => null)
+    : null;
   if (local && local.ok) {
     mostrarLista(await local.json(), "local");
     return;
   }
-  const cifrado = await fetch("data/history.enc.json", { cache: "no-store" }).catch(() => null);
+  const cifrado = tem.published
+    ? await fetch("data/history.enc.json", { cache: "no-store" }).catch(() => null)
+    : null;
   if (!cifrado || !cifrado.ok) {
     // ninguém publicou histórico aqui: a página vira a apresentação do projeto
     $("sub").textContent = t("about");

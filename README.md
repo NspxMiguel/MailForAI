@@ -335,6 +335,14 @@ WebCrypto. The file can sit in a public repo — without the passphrase it is
 noise. Push it to GitHub Pages and the mailbox log is readable from anywhere,
 by you.
 
+Alongside it goes `docs/data/manifest.json`, which declares what is actually
+there. The page reads it first and only requests a history the manifest
+announced, so a site with no history published asks for nothing and logs no
+404 — it just shows the project page. `publish` writes the manifest for you and
+`serve` overrides it in memory; the checked-in copy declares an empty site. A
+page served without a manifest falls back to probing for both files, so an
+older deployment keeps working.
+
 ## Proving it works
 
 The app carries its own proof. **Settings → Check → Test the agent now**, or:
