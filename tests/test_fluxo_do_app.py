@@ -498,6 +498,30 @@ def t_manifesto():
             httpd.shutdown()
 
 
+@teste("o manifesto trava as duas buscas, não só uma")
+def t_manifesto_trava_as_duas():
+    """O 404 no console voltava se alguém 'simplificasse' um dos dois lados.
+
+    Conferido no navegador nos três modos — apresentação, `serve` e publicado —
+    mas navegador não cabe nesta suíte. O que cabe é garantir que as duas
+    buscas continuem penduradas no manifesto: é essa condição, e só ela, que
+    impede a página de sondar arquivo que não existe.
+    """
+    fonte = (RAIZ / "docs" / "app.js").read_text()
+
+    # As duas buscas ficam dentro de um ternário guardado pelo inventário.
+    for arquivo, chave in (("data/history.json", "tem.local"), ("data/history.enc.json", "tem.published")):
+        pedido = fonte.index(f'fetch("{arquivo}"')
+        trecho = fonte[max(0, pedido - 200):pedido]
+        assert chave in trecho, \
+            f"{arquivo} deixou de ser guardado por {chave} — o 404 volta ao console"
+
+    # E o inventário só pode liberar as duas quando o próprio manifesto falta,
+    # que é o caso de quem montou a pasta na mão.
+    assert "return { local: true, published: true }" in fonte, \
+        "sem o retorno permissivo, uma pasta sem manifesto deixa de achar histórico que existe"
+
+
 # ---------------------------------------------------------------- execução
 
 
@@ -535,7 +559,7 @@ def main() -> int:
                    t_barra_vazamento, t_legitima_passa, t_anti_laco,
                    t_ciclo_completo, t_injecao_ponta_a_ponta, t_recusa_nao_derruba,
                    t_servico,
-                   t_idioma, t_publish, t_manifesto]:
+                   t_idioma, t_publish, t_manifesto, t_manifesto_trava_as_duas]:
         funcao()
 
     print(f"\n{len(passaram)} passaram, {len(falhas)} falharam")
