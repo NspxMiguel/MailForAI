@@ -3,6 +3,13 @@
 Give an AI agent its own mailbox — one it can actually use, with a leash on who
 it may write to and a log of everything it sent.
 
+> **Not the same as [MyMailForAI](https://github.com/NspxMiguel/MyMailForAI).**
+> One letter apart, opposite premises. **MailForAI** — this one — hands the agent
+> a mailbox of *its own*, and the point is the leash: an allowlist, a daily cap,
+> an auditable log. **MyMailForAI** hands it *yours*, with full access, and the
+> point is the brake in the menu bar. Pick this one if the agent should have an
+> address; pick that one if it should read your mail.
+
 Agents can already read your screen, run your shell and open pull requests.
 Email is the one channel they still cannot touch, because handing an agent a
 mail account normally means handing it your mail account. MailForAI splits
@@ -417,3 +424,7 @@ tests/                 fake mail server and the end-to-end flow test
 ## License
 
 MIT
+
+## Documentação
+
+Índice: [`docs/INDEX.md`](docs/INDEX.md)
