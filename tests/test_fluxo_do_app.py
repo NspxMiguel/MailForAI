@@ -498,6 +498,38 @@ def t_manifesto():
             httpd.shutdown()
 
 
+@teste("cada sessão carimba o próprio id no cabeçalho")
+def t_cabecalho_de_sessao():
+    """Sem esse carimbo não dá para arquivar a mensagem anterior de UMA sessão.
+
+    Duas sessões escrevendo em paralelo mandam mensagens diferentes; quem lê a
+    caixa precisa saber qual veio de qual conversa para não arquivar as duas.
+    """
+    from mailforai_lib import mailer
+
+    conta = {
+        "address": "agente@example.com",
+        "identity": {"mode": "ia", "owner_name": "Miguel", "agent_name": "Claude", "signature": ""},
+    }
+    anterior = os.environ.get("CLAUDE_CODE_HOST_SESSION_ID")
+    try:
+        os.environ["CLAUDE_CODE_HOST_SESSION_ID"] = "local_sessao-a"
+        uma = mailer.build_message(conta, ["dono@example.com"], "oi", "corpo")
+        assert uma["X-Claude-Session"] == "local_sessao-a", uma["X-Claude-Session"]
+
+        os.environ["CLAUDE_CODE_HOST_SESSION_ID"] = "local_sessao-b"
+        outra = mailer.build_message(conta, ["dono@example.com"], "oi", "corpo")
+        assert outra["X-Claude-Session"] == "local_sessao-b", outra["X-Claude-Session"]
+
+        del os.environ["CLAUDE_CODE_HOST_SESSION_ID"]
+        sem = mailer.build_message(conta, ["dono@example.com"], "oi", "corpo")
+        assert sem["X-Claude-Session"] is None, "inventou sessão sem a variável"
+    finally:
+        os.environ.pop("CLAUDE_CODE_HOST_SESSION_ID", None)
+        if anterior is not None:
+            os.environ["CLAUDE_CODE_HOST_SESSION_ID"] = anterior
+
+
 @teste("o manifesto trava as duas buscas, não só uma")
 def t_manifesto_trava_as_duas():
     """O 404 no console voltava se alguém 'simplificasse' um dos dois lados.
@@ -559,7 +591,8 @@ def main() -> int:
                    t_barra_vazamento, t_legitima_passa, t_anti_laco,
                    t_ciclo_completo, t_injecao_ponta_a_ponta, t_recusa_nao_derruba,
                    t_servico,
-                   t_idioma, t_publish, t_manifesto, t_manifesto_trava_as_duas]:
+                   t_idioma, t_publish, t_manifesto, t_manifesto_trava_as_duas,
+                   t_cabecalho_de_sessao]:
         funcao()
 
     print(f"\n{len(passaram)} passaram, {len(falhas)} falharam")

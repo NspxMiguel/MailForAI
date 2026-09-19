@@ -13,6 +13,7 @@ O padrão é `ia`: é o único que não deixa dúvida do outro lado, e um padrã
 que engana por omissão seria escolha minha, não dele.
 """
 
+import os
 from typing import Any, Dict
 
 from .i18n import T
@@ -87,4 +88,19 @@ def headers(account: Dict[str, Any]) -> Dict[str, str]:
     """
     if resolve(account)["mode"] == "dono":
         return {}
-    return {"X-Mailer": "MailForAI", "Auto-Submitted": "auto-generated"}
+    valores = {"X-Mailer": "MailForAI", "Auto-Submitted": "auto-generated"}
+    sessao = session_id()
+    if sessao:
+        valores["X-Claude-Session"] = sessao
+    return valores
+
+
+def session_id() -> str:
+    """Qual sessão do agente está mandando esta mensagem.
+
+    O servidor MCP roda dentro da sessão e herda o ambiente dela, então cada
+    sessão põe um valor diferente. Quem lê a caixa usa isso para saber que duas
+    mensagens vieram da mesma conversa -- e pode arquivar a anterior sem tocar
+    no que outra sessão mandou em paralelo.
+    """
+    return (os.environ.get("CLAUDE_CODE_HOST_SESSION_ID") or "").strip()
