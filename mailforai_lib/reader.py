@@ -1,6 +1,8 @@
 """Leitura por IMAP: caixa de entrada e corpo de uma mensagem."""
 
 import email
+import mimetypes
+from pathlib import Path
 import email.message
 import email.utils
 import imaplib
@@ -94,9 +96,7 @@ def _summarize(uid: str, msg: email.message.Message, flags: str = "") -> Dict[st
         "date": iso,
         "message_id": (msg.get("Message-ID") or "").strip(),
         "unread": "\\Seen" not in flags,
-        "has_attachments": any(
-            p.get_content_disposition() == "attachment" for p in msg.walk()
-        ) if msg.is_multipart() else False,
+        "has_attachments": any(True for _ in _attachment_parts(msg)) if msg.is_multipart() else False,
     }
 
 
@@ -127,6 +127,66 @@ def inbox(account: Dict[str, Any], limit: int = 15, unread_only: bool = False,
             pass
 
 
+def _attachment_parts(msg):
+    """Every leaf part that is not the message's own readable text.
+
+    Deliberately wider than `Content-Disposition: attachment`. Apple Mail — and anything else
+    that embeds a photo rather than attaching it — marks the part `inline`, and often gives it
+    no filename at all, only a Content-ID. Testing for the "attachment" disposition therefore
+    reported zero attachments on a message that plainly carried a photo, with nothing in the
+    output to suggest anything had been dropped.
+    """
+    for index, part in enumerate(msg.walk()):
+        if part.get_content_maintype() == "multipart":
+            continue
+        if part.get_content_type() in ("text/plain", "text/html"):
+            # Text counts only when it was attached as a file rather than written as the body.
+            if not part.get_filename() and part.get_content_disposition() != "attachment":
+                continue
+        yield index, part
+
+
+def _attachment_name(part, index: int) -> str:
+    """A usable name even when the sender sent none — see _attachment_parts."""
+    name = part.get_filename()
+    if name:
+        return _decode(name) if "_decode" in globals() else name
+    cid = (part.get("Content-ID") or "").strip().strip("<>")
+    base = cid.split("@", 1)[0] if cid else f"part{index}"
+    ext = mimetypes.guess_extension(part.get_content_type()) or ".bin"
+    return base if base.lower().endswith(ext) else base + ext
+
+
+def save_attachments(msg, uid: str) -> List[Dict[str, Any]]:
+    """Write each part out and report where it landed.
+
+    Reading an image is the only thing a caller can usefully do with one, and this library has
+    no separate fetch-by-name call, so a name with no path would just be a dead end.
+    """
+    out_dir = Path.home() / ".mailforai" / "attachments" / str(uid)
+    saved = []
+    for index, part in _attachment_parts(msg):
+        name = _attachment_name(part, index)
+        try:
+            payload = part.get_payload(decode=True) or b""
+        except Exception:
+            payload = b""
+        entry = {
+            "filename": name,
+            "content_type": part.get_content_type(),
+            "size": len(payload),
+            "inline": part.get_content_disposition() != "attachment",
+            "path": None,
+        }
+        if payload:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            target = out_dir / Path(name).name
+            target.write_bytes(payload)
+            entry["path"] = str(target)
+        saved.append(entry)
+    return saved
+
+
 def read(account: Dict[str, Any], uid: str, mailbox: str = "INBOX",
          mark_read: bool = True) -> Dict[str, Any]:
     conn = _connect(account)
@@ -141,10 +201,7 @@ def read(account: Dict[str, Any], uid: str, mailbox: str = "INBOX",
         body = _plain_body(msg).strip()
         summary["truncated"] = len(body) > MAX_BODY_CHARS
         summary["body"] = body[:MAX_BODY_CHARS]
-        summary["attachments"] = [
-            p.get_filename() for p in msg.walk()
-            if p.get_content_disposition() == "attachment"
-        ] if msg.is_multipart() else []
+        summary["attachments"] = save_attachments(msg, uid) if msg.is_multipart() else []
         if mark_read:
             conn.store(str(uid).encode(), "+FLAGS", "\\Seen")
         return summary
