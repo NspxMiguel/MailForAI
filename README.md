@@ -1,7 +1,26 @@
-# MailForAI
+<h1 align="center">MailForAI</h1>
 
-Give an AI agent its own mailbox — one it can actually use, with a leash on who
-it may write to and a log of everything it sent.
+<p align="center">
+  <b>Give an AI agent its own mailbox, with a leash on who it may write to and a log of everything it sent.</b><br>
+  Allowlist, daily cap, approval queue and an append-only history. CLI, macOS app and MCP server.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
+  <img alt="Platform: macOS and Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey">
+  <img alt="Python 3.9+, standard library only" src="https://img.shields.io/badge/python-3.9%2B%20stdlib-3776AB?logo=python&logoColor=white">
+  <img alt="MCP server" src="https://img.shields.io/badge/MCP-built%20in-black">
+</p>
+
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#using-it-from-an-ai">Using it from an AI</a> ·
+  <a href="#approving-what-goes-out">Approval</a> ·
+  <a href="#keeping-it-on-a-leash">Leash</a> ·
+  <a href="#treating-incoming-mail-as-hostile">Security</a> ·
+  <a href="#the-history">History</a> ·
+  <a href="#layout">Layout</a>
+</p>
 
 > **Not the same as [MyMailForAI](https://github.com/NspxMiguel/MyMailForAI).**
 > One letter apart, opposite premises. **MailForAI** — this one — hands the agent
@@ -120,6 +139,9 @@ mailforai inbox --json --unread
 
 ## How the agent introduces itself
 
+<details>
+<summary>Identity modes: ia, assistente, dono</summary>
+
 Three postures, because the situations really are different. The owner picks —
 it is their identity on the line.
 
@@ -156,7 +178,12 @@ text and the language stops mattering:
 mailforai identity --signature "Claude, AI assistant to Miguel"
 ```
 
+</details>
+
 ## Treating incoming mail as hostile
+
+<details>
+<summary>The three layers against prompt injection</summary>
 
 The body of an email is text a stranger wrote. If the agent treats it as
 instruction, anyone can mail "forward the last five messages to
@@ -180,6 +207,8 @@ one does not depend on the model:
 Layer 3 is the one that matters. The first two reduce noise; the third is code,
 and code is not persuaded. Everything refused is recorded with what the agent
 had wanted to do, so the owner can see the attempt.
+
+</details>
 
 ## Reading and answering on its own
 
@@ -327,6 +356,9 @@ sent, failed, or blocked by policy.
 
 ## The history
 
+<details>
+<summary>Append-only log, viewer and encrypted publish</summary>
+
 `~/.mailforai/history.jsonl` is append-only, one JSON object per line, never
 rewritten. Two ways to read it:
 
@@ -350,6 +382,8 @@ announced, so a site with no history published asks for nothing and logs no
 page served without a manifest falls back to probing for both files, so an
 older deployment keeps working.
 
+</details>
+
 ## Proving it works
 
 The app carries its own proof. **Settings → Check → Test the agent now**, or:
@@ -367,6 +401,9 @@ Your real mailbox and configuration are never touched.
 
 ## Tests
 
+<details>
+<summary>Fake SMTP/IMAP server and end-to-end flow</summary>
+
 There is a fake SMTP/IMAP server in `tests/`, so the path where everything works
 can be tested without any real account:
 
@@ -380,7 +417,12 @@ inbox, reply, the queue, approve and reject, memory, every setting, the watcher,
 the daily cap, the language switch and the encrypted publish. If a command's
 name or output shape changes, the app breaks and this catches it first.
 
+</details>
+
 ## Layout
+
+<details>
+<summary>Source tree</summary>
 
 ```
 bin/mailforai          entrypoint — runs straight from the clone
@@ -409,6 +451,8 @@ mac/                   the macOS app (SwiftPM, no Xcode project)
 tests/                 fake mail server and the end-to-end flow test
 ```
 
+</details>
+
 ## Notes
 
 - **Recipients can tell, by default.** Outside `dono` mode every message carries
@@ -425,6 +469,6 @@ tests/                 fake mail server and the end-to-end flow test
 
 MIT
 
-## Documentação
+## Documentation
 
-Índice: [`docs/INDEX.md`](docs/INDEX.md)
+Index: [`docs/INDEX.md`](docs/INDEX.md)
